@@ -4,7 +4,7 @@ import sys
 INT_RE = "([1-9][0-9]*|0)"
 LABEL_RE = "([a-zA-Z_][a-zA-Z0-9_]*)"
 PUNCT = {'+', '-', '*', '%', '==', '!=', '<', '>', '<=', '>=', '&', '|', '^', '^!',
-         '->', ':'}
+         '->', ':', ',', '~'}
 
 
 class Token:
@@ -33,6 +33,8 @@ class Token:
             self.ttype = "THEN"
         elif s == "else":
             self.ttype = "ELSE"
+        elif s == "with":
+            self.ttype = "WITH"
         elif re.fullmatch(INT_RE, s):
             self.ttype = "INT"
             self.val = int(s)
@@ -50,6 +52,10 @@ class Token:
             self.ttype = "ARROW"
         elif s == ":":
             self.ttype = "COLON"
+        elif s == ",":
+            self.ttype = "COMMA"
+        elif s == "~":
+            self.ttype = "TILDE"
         elif s in PUNCT:
             self.ttype = "LABEL"
             self.val = s

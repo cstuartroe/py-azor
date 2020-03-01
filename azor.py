@@ -7,7 +7,7 @@ from src.typecheck import TypeChecker
 
 if __name__ == "__main__":
     with open(sys.argv[1], "r") as fh:
-        code = fh.read()
+        code = fh.read().replace('\t', '    ')
 
     lines = code.split("\n")
     t = Tokenizer(lines)

@@ -50,7 +50,7 @@ class AzorType:
         elif self.atype == "LIST":
             return f"[{str(self.subtype)}]"
         elif self.atype == "TUPLE":
-            return f"({' '.join(str(c) for c in self.constituents)})"
+            return f"({', '.join(str(c) for c in self.constituents)})"
         elif self.atype == "FUNCTION":
             l = [f"{name}:{str(azortype)}" for name, azortype in zip(self.argnames, self.argtypes)]
             return f"{str(self.rtype)}({' '.join(l)})"

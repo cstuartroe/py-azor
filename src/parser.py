@@ -2,7 +2,7 @@ from .tokens import Token, Tokenizer
 
 
 class Node:
-    NODETYPES = {"SIMPLE", "LIST", "TUPLE", "STATEMENT", "CALL", "IF", "UNPACK", "TYPE"}
+    NODETYPES = {"SIMPLE", "LIST", "TUPLE", "STATEMENT", "CALL", "IF", "UNPACK", "TYPE", "WITH", "TILDE"}
 
     def __init__(self, start_token: Token, ntype: str):
         self.start_token = start_token
@@ -18,9 +18,9 @@ class Node:
         if self.ntype == "SIMPLE":
             return self.start_token.s
         elif self.ntype == "LIST":
-            return f"[{' '.join(str(e) for e in self.elements)}]"
+            return f"[{', '.join(str(e) for e in self.elements)}]"
         elif self.ntype == "TUPLE":
-            return f"({' '.join(str(e) for e in self.elements)})"
+            return f"({', '.join(str(e) for e in self.elements)})"
         elif self.ntype == "STATEMENT":
             return f"{str(self.left)} = {str(self.right)}\n"
         elif self.ntype == "CALL":
@@ -34,6 +34,13 @@ class Node:
 
 
 class Parser:
+    SUFFIX_PRECEDENCE = {
+        "TYPE": 3,
+        "CALL": 2,
+        "TILDE": 1,
+        "WITH": 0
+    }
+
     def __init__(self, tokenizer: Tokenizer):
         self.tokenizer = tokenizer
         self.tokens = tokenizer.tokenize()
@@ -65,7 +72,7 @@ class Parser:
 
     def grab_statement(self):
         self.lhs = True
-        left = self.grab_expr()
+        left = self.grab_expr(-1)
         if left.ntype == "CALL":
             if left.left.ntype != "TYPE":
                 self.tokenizer.raise_error(left.start_token, "Declarations must include a type")
@@ -78,20 +85,19 @@ class Parser:
         self.expect('=')
         self.lhs = False
 
-        right = self.grab_expr()
+        right = self.grab_expr(-1)
 
         n = Node(left.start_token, "STATEMENT")
         n.left = left
         n.right = right
         return n
 
-    def grab_expr(self):
+    def grab_expr(self, suffix_precedence):
         if self.next().ttype == '[':
             n = Node(self.next(), "LIST")
             self.i += 1
             n.elements = self.grab_series()
             self.expect(']')
-            return n
 
         elif self.next().ttype == '(':
             start_token = self.next()
@@ -100,36 +106,50 @@ class Parser:
             if self.next().ttype == "IF":
                 self.i += 1
                 n = Node(start_token, "IF")
-                n.condition = self.grab_expr()
+                n.condition = self.grab_expr(-1)
+                if n.condition.ntype == "UNPACK":
+                    if n.condition.right.ntype != "TILDE":
+                        self.tokenizer.raise_error(n.condition.right.start_token,
+                                                   "If unpacking must be a tilde expression")
+                    for e in n.condition.right.left, n.condition.right.right:
+                        if e.ntype != "SIMPLE" or e.start_token.ttype != "LABEL":
+                            self.tokenizer.raise_error(e.start_token, "Must be a label")
+
                 self.expect('then')
-                n.left = self.grab_expr()
+                n.left = self.grab_expr(-1)
                 self.expect('else')
-                n.right = self.grab_expr()
+                n.right = self.grab_expr(-1)
 
             elif self.next().ttype == ")":
                 n = Node(start_token, "TUPLE")
                 n.elements = []
 
             else:
-                expr = self.grab_expr()
+                expr = self.grab_expr(-1)
 
                 if self.next().ttype == "ARROW":
                     self.i += 1
                     n = Node(start_token, "UNPACK")
-                    n.condition = expr
-                    n.left = self.grab_expr()
-                    n.right = self.grab_expr()
-                    for e in n.left, n.right:
-                        if e.ntype != "SIMPLE" or e.start_token.ttype != "LABEL":
-                            self.tokenizer.raise_error(e.start_token, "Must be a label")
+                    n.left = expr
+                    n.right = self.grab_expr(-1)
 
-                else:
+                elif self.next().ttype == "COMMA":
                     n = Node(start_token, "TUPLE")
-                    elements = self.grab_series()
-                    n.elements = [expr] + elements
+                    self.i += 1
+                    n.elements = [expr] + self.grab_series()
+
+                elif self.next().ttype == ")":
+                    n = Node(start_token, "TUPLE")
+                    n.elements = [expr]
+
+                elif self.next().ttype == "LABEL":
+                    n = Node(start_token, "CALL")
+                    n.left = Node(self.next(), "SIMPLE")
+                    self.i += 1
+                    n.args = Node(start_token, "TUPLE")
+                    n.args.elements = [expr, self.grab_expr(-1)]
 
             self.expect(')')
-            return n
 
         elif self.next().ttype in ")]":
             raise self.tokenizer.raise_error(self.next(), "Mismatched braces")
@@ -146,7 +166,13 @@ class Parser:
         else:
             self.tokenizer.raise_error(self.next(), "Invalid start to expression")
 
-        if not self.eof() and self.next().ttype == "COLON":
+        return self.check_suffixes(n, suffix_precedence)
+
+    def check_suffixes(self, n, precedence):
+        if self.eof():
+            return n
+
+        if self.next().ttype == "COLON" and precedence < Parser.SUFFIX_PRECEDENCE["TYPE"]:
             if n.ntype != "SIMPLE" or n.start_token.ttype != "LABEL":
                 self.tokenizer.raise_error(n.start_token, "Cannot declare type of a non-label")
             elif not self.lhs:
@@ -154,21 +180,47 @@ class Parser:
             expr = Node(n.start_token, "TYPE")
             expr.left = n
             self.expect(':')
-            expr.right = self.grab_expr()
-            n = expr
+            expr.right = self.grab_expr(Parser.SUFFIX_PRECEDENCE["TYPE"])
+            return self.check_suffixes(expr, -1)
 
-        if not self.eof() and self.next().ttype == "(":
+        if self.next().ttype == "(" and precedence < Parser.SUFFIX_PRECEDENCE["CALL"]:
             call = Node(n.start_token, "CALL")
             call.left = n
-            call.args = self.grab_expr()
+            call.args = self.grab_expr(Parser.SUFFIX_PRECEDENCE["CALL"])
             if call.args.ntype != "TUPLE":
-                self.tokenizer.raise_error(call.args.start_token, "Args must be a tuple")
-            n = call
+                self.tokenizer.raise_error(call.args.start_token, "Args must be a tuple, not " + str(call.args.ntype))
+            return self.check_suffixes(call, -1)
+
+        if self.next().ttype == "WITH" and precedence < Parser.SUFFIX_PRECEDENCE["WITH"]:
+            withnode = Node(self.next(), "WITH")
+            self.i += 1
+            withnode.left = n
+            withnode.condition = self.grab_expr(Parser.SUFFIX_PRECEDENCE["WITH"])
+            if withnode.condition.ntype != "UNPACK":
+                self.tokenizer.raise_error(n.condition.start_token, "Expected unpack")
+            if withnode.condition.right.ntype != "TUPLE":
+                self.tokenizer.raise_error(withnode.condition.right.start_token, "with unpack must be into tuple")
+            for e in withnode.condition.right.elements:
+                if e.ntype != "SIMPLE" or e.start_token.ttype != "LABEL":
+                    self.tokenizer.raise_error(e.start_token, "Must be a label")
+            return self.check_suffixes(withnode, -1)
+
+        if self.next().ttype == "TILDE" and precedence < Parser.SUFFIX_PRECEDENCE["TILDE"]:
+            tildenode = Node(n.start_token, "TILDE")
+            self.i += 1
+            tildenode.left = n
+            tildenode.right = self.grab_expr(Parser.SUFFIX_PRECEDENCE["TILDE"])
+            return self.check_suffixes(tildenode, -1)
 
         return n
 
     def grab_series(self):
         elems = []
-        while self.next().ttype not in "])":
-            elems.append(self.grab_expr())
+        cont = self.next().ttype not in "])"
+        while cont:
+            elems.append(self.grab_expr(-1))
+            if self.next().ttype == "COMMA":
+                self.i += 1
+            else:
+                cont = False
         return elems

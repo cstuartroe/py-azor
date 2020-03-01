@@ -82,7 +82,8 @@ class TypeChecker:
 
     def execute_main(self):
         val = self.symbol_table["main"].value({'m': 4, 'n': 3})
-        print("Exit success" if val else "Exit failure")
+        if not val:
+            print("Exit failure")
 
     def evaluate(self):
         for label, stmt in self.stmts_by_label.items():
@@ -115,7 +116,11 @@ class TypeChecker:
             return [self.evaluate_expr(e, local_vars) for e in expr.elements]
 
         elif expr.ntype == "TUPLE":
-            return tuple(self.evaluate_expr(e, local_vars) for e in expr.elements)
+            t = tuple(self.evaluate_expr(e, local_vars) for e in expr.elements)
+            if len(t) == 1:
+                return t[0]
+            else:
+                return t
 
         elif expr.ntype == "CALL":
             func = self.evaluate_expr(expr.left, local_vars)
@@ -130,12 +135,12 @@ class TypeChecker:
 
         elif expr.ntype == "IF":
             if expr.condition.ntype == "UNPACK":
-                l = self.evaluate_expr(expr.condition.condition, local_vars)
+                l = self.evaluate_expr(expr.condition.left, local_vars)
                 if len(l) > 0:
                     subkw = {}
                     subkw.update(local_vars)
-                    subkw[expr.condition.left.start_token.s] = l[0]
-                    subkw[expr.condition.right.start_token.s] = l[1:]
+                    subkw[expr.condition.right.left.start_token.s] = l[0]
+                    subkw[expr.condition.right.right.start_token.s] = l[1:]
                     return self.evaluate_expr(expr.left, subkw)
                 else:
                     return self.evaluate_expr(expr.right, local_vars)
@@ -148,6 +153,19 @@ class TypeChecker:
                 else:
                     return self.evaluate_expr(expr.right, local_vars)
 
+        elif expr.ntype == "WITH":
+            tup = self.evaluate_expr(expr.condition.left, local_vars)
+            subkw = {}
+            subkw.update(local_vars)
+            for e, labelexpr in zip(tup, expr.condition.right.elements):
+                subkw[labelexpr.start_token.s] = e
+            return self.evaluate_expr(expr.left, subkw)
+
+        elif expr.ntype == "TILDE":
+            return [self.evaluate_expr(expr.left, local_vars)] + self.evaluate_expr(expr.right, local_vars)
+
+        else:
+            self.raise_error(expr, "Evaluation of " + expr.ntype + " not yet implemented!")
 
     def checkstmt(self, label):
         env = {}
@@ -169,6 +187,8 @@ class TypeChecker:
             self.checkexpr(azortype, stmt.right, {})
 
     def checkexpr(self, expected_type: AzorType, expr: Node, env: dict):
+        azortype = None
+
         if expr.ntype == "SIMPLE":
             if expr.start_token.ttype == "LABEL":
                 label = expr.start_token.s
@@ -177,92 +197,112 @@ class TypeChecker:
                 elif label in self.symbol_table:
                     azortype = self.symbol_table[label].azortype
                 else:
-                    self.raise_error(expr, "No such symbol")
+                    self.raise_error(expr, "Label not assigned: " + label)
+
             elif expr.start_token.ttype == "BOOL":
                 azortype = BOOL
             elif expr.start_token.ttype == "INT":
                 azortype = INT
-            else:
-                self.raise_error(expr, "???")
-
-            if azortype != expected_type:
-                self.raise_error(expr, "Expected type: " + str(expected_type))
 
         elif expr.ntype == "LIST":
-            if expected_type.atype == "LIST":
-                subtype = expected_type.subtype
-            else:
-                self.raise_error(expr, "Expected type: " + str(expected_type))
+            azortype = AzorType("LIST")
+            if len(expr.elements) == 0:
+                if expected_type and expected_type.atype == "LIST":
+                    azortype.subtype = expected_type.subtype
+                else:
+                    azortype.subtype = INT  # TODO: proper generics
 
-            for e in expr.elements:
-                self.checkexpr(subtype, e, env)
+            else:
+                azortype.subtype = self.checkexpr(None, expr.elements[0], env)
+                for e in expr.elements[1:]:
+                    self.checkexpr(azortype.subtype, e, env)
 
         elif expr.ntype == "TUPLE":
-            if expected_type.atype != "TUPLE":
-                self.raise_error(expr, "Expected type: " + str(expected_type))
-            elif len(expected_type.constituents) != len(expr.elements):
-                self.raise_error(expr, "Expected type: " + str(expected_type))
+            if len(expr.elements) == 1:
+                azortype = self.checkexpr(expected_type, expr.elements[0], env)
 
-            for subtype, e in zip(expected_type.constituents, expr.elements):
-                self.checkexpr(subtype, e, env)
+            else:
+                azortype = AzorType("TUPLE", constituents=[])
+                for e in expr.elements:
+                    azortype.constituents.append(self.checkexpr(None, e, env))
 
         elif expr.ntype == "CALL":
-            if expr.left.ntype != "SIMPLE" or expr.left.start_token.ttype != "LABEL":
-                self.raise_error(expr.left, "Dynamic functions not yet supported :(")
+            functype = self.checkexpr(None, expr.left, env)
+            if functype.atype != "FUNCTION":
+                self.raise_error(expr.left, f"Object of type {str(functype)} cannot be called")
 
-            label = expr.left.start_token.s
-            if label in env:
-                azortype = env[label].azortype
-            elif label in self.symbol_table:
-                azortype = self.symbol_table[label].azortype
-            else:
-                self.raise_error(expr.left, "Label not assigned")
-
-            if azortype.atype != "FUNCTION":
-                self.raise_error(expr.left, "Not a function: " + label)
-
-            if azortype.rtype != expected_type:
-                self.raise_error(expr, f"Incorrect return type: expected {str(expected_type)} but actually is {str(azortype.rtype)}")
-
-            if len(azortype.argtypes) != len(expr.args.elements):
+            if len(functype.argtypes) != len(expr.args.elements):
                 self.raise_error(expr.args, "Too few arguments: expected " + str(len(azortype.argtypes)))
 
-            for argtype, e in zip(azortype.argtypes, expr.args.elements):
+            for argtype, e in zip(functype.argtypes, expr.args.elements):
                 self.checkexpr(argtype, e, env)
+
+            azortype = functype.rtype
 
         elif expr.ntype == "IF":
             if expr.condition.ntype == "UNPACK":
                 subenv = {}
                 subenv.update(env)
-                if expr.condition.condition.start_token.s not in env:
-                    self.raise_error(expr.condition.condition, "Label not assigned")
 
-                ltype = env[expr.condition.condition.start_token.s].azortype  # TODO: dynamic unpacks
+                ltype = self.checkexpr(None, expr.condition.left, env)  # TODO: dynamic unpacks
                 if ltype.atype != "LIST":
-                    self.raise_error(expr.condition.condition, "Does not have a list type")
+                    self.raise_error(expr.condition.left, "Expected list type but got " + str(ltype))
 
-                for e in expr.condition.left, expr.condition.right:
+                for e in expr.condition.right.left, expr.condition.right.right:
                     label = e.start_token.s
                     if label in subenv:
                         self.raise_error(e, "Duplicate variable name: " + label)
                     elif label in self.symbol_table:
                         self.raise_error(e, "Shadows name from outer scope: " + label)
 
-                subenv[expr.condition.left.start_token.s] = Variable(ltype.subtype, None)
-                subenv[expr.condition.right.start_token.s] = Variable(ltype, None)
+                subenv[expr.condition.right.left.start_token.s] = Variable(ltype.subtype, None)
+                subenv[expr.condition.right.right.start_token.s] = Variable(ltype, None)
 
             else:
                 self.checkexpr(BOOL, expr.condition, env)
                 subenv = env
 
-            self.checkexpr(expected_type, expr.left, subenv)
-            self.checkexpr(expected_type, expr.right, subenv)
+            azortype = self.checkexpr(expected_type, expr.left, subenv)
+            righttype = self.checkexpr(expected_type, expr.right, subenv)
+            if azortype != righttype:
+                self.raise_error(expr, f"Then and else have different types: {str(azortype)} and {str(righttype)}")
+
+        elif expr.ntype == "WITH":
+            subenv = {}
+            subenv.update(env)
+
+            tuptype = self.checkexpr(None, expr.condition.left, env)
+            if tuptype.atype != "TUPLE":
+                self.raise_error(expr.condition.left, "Expected tuple but got " + str(tuptype))
+
+            if len(expr.condition.right.elements) != len(tuptype.constituents):
+                self.raise_error(expr.condition, f"Mismatched number of elements: expected {len(tuptype.constituents)}")
+
+            for e, azortype in zip(expr.condition.right.elements, tuptype.constituents):
+                label = e.start_token.s
+                if label in subenv:
+                    self.raise_error(e, "Duplicate variable name: " + label)
+                elif label in self.symbol_table:
+                    self.raise_error(e, "Shadows name from outer scope: " + label)
+                subenv[label] = Variable(azortype, None)
+
+            azortype = self.checkexpr(expected_type, expr.left, subenv)
+
+        elif expr.ntype == "TILDE":
+            azortype = self.checkexpr(None, expr.right, env)
+            if azortype.atype == "LIST":
+                self.checkexpr(azortype.subtype, expr.left, env)
 
         elif expr.ntype == "UNPACK":
-            self.raise_error(expr, "Unpack expression can only occur as condition of if statement")
+            self.raise_error(expr, "Unpack expression can only occur as condition of if or with statement")
 
         else:
             self.raise_error(expr, "???")
+
+        if expected_type is not None and azortype != expected_type:
+            self.raise_error(expr, f"Expected type {str(expected_type)}, not {str(azortype)}")
+        else:
+            return azortype
 
     def raise_error(self, node, message):
         self.parser.tokenizer.raise_error(node.start_token, message)
