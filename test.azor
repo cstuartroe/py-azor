@@ -1,0 +1,15 @@
+fn:INT(a:INT b:INT c:INT) = +(c *(a b))
+
+all:BOOL(l:[BOOL]) = ( if (l -> head tail)
+                       then (if head then all(tail) else false)
+                       else true )
+
+any:BOOL(l:[BOOL]) = ( if (l -> head tail)
+                       then (if head then true else any(tail))
+                       else false )
+
+fn2:INT(a:INT b:INT) = fn(a b 0)
+
+fib:INT(n:INT) = (if ==(n 0) then 0 else (if ==(n 1) then 1 else +(fib(-(n 1)) fib(-(n 2)))))
+
+main:BOOL() = >(printi(fib(10)) 0)
