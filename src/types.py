@@ -1,9 +1,10 @@
 class AzorType:
-    ATYPES = {"BOOL", "INT", "LIST", "TUPLE", "FUNCTION"}
+    ATYPES = {"ANY", "SIMPLE", "BOOL", "INT", "LIST", "TUPLE", "FUNCTION"}
 
-    def __init__(self, atype, constituents=None, rtype=None, argtypes=None, subtype=None, argnames=None):
+    def __init__(self, atype, constituents=None, rtype=None, argtypes=None, subtype=None, argnames=None, typevars=None):
         assert(atype in AzorType.ATYPES)
         self.atype = atype
+        self.typevars = typevars or {}
 
         if atype == "LIST":
             self.subtype = subtype

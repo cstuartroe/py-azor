@@ -78,7 +78,7 @@ class Parser:
                 self.tokenizer.raise_error(left.start_token, "Declarations must include a type")
             for arg in left.args.elements:
                 if arg.ntype != "TYPE":
-                    self.tokenizer.raise_error(arg.start_token, "All arguments must include a type annotation")
+                    self.tokenizer.raise_error(arg.start_token, "All arguments must include a type annotation " + arg.ntype)
         elif left.ntype != "TYPE":
             self.tokenizer.raise_error(left.start_token, "Declarations must include a type")
 

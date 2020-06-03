@@ -23,7 +23,8 @@ STDLIB = {
     '&': Variable(LOGIC_TYPE, lambda kw: kw["a"] and kw["b"]),
     '|': Variable(LOGIC_TYPE, lambda kw: kw["a"] or kw["b"]),
     '^': Variable(LOGIC_TYPE, lambda kw: kw["a"] != kw["b"]),
-    '!^': Variable(LOGIC_TYPE, lambda kw: kw["a"] == kw["b"])
+    '!^': Variable(LOGIC_TYPE, lambda kw: kw["a"] == kw["b"]),
+    '~': Variable(AzorType("LIST"), lambda kw: [kw["h"]] + kw["t"])
 }
 
 
