@@ -3,8 +3,46 @@ import sys
 
 INT_RE = "([1-9][0-9]*|0)"
 LABEL_RE = "([a-zA-Z_][a-zA-Z0-9_]*)"
-PUNCT = {'+', '-', '*', '%', '==', '!=', '<', '>', '<=', '>=', '&', '|', '^', '^!',
-         '->', ':', ',', '~'}
+
+BINOP_PRECS = {
+    '+': 2,
+    '-': 2,
+    '*': 3,
+    '/': 3,
+    '**': 4,
+    '%': 2.
+}
+
+COMPARISONS = {
+    "==",
+    "!=",
+    "<",
+    "<=",
+    ">",
+    ">=",
+}
+
+LOGIC = {
+    "|",
+    "&",
+    "^",
+    "!^",
+}
+
+PUNCT = {
+    '<-',
+    ':',
+    ',',
+    '~',
+    "=",
+    "(",
+    ")",
+    "[",
+    "]",
+    "!"
+}
+
+ALL_PUNCTUATION = set(BINOP_PRECS.keys()) | COMPARISONS | LOGIC | PUNCT
 
 
 class Token:
@@ -12,61 +50,63 @@ class Token:
         self.line_no = line_no
         self.col_no = col_no
         self.s = s
-        self.settype(s)
+        self.val = None
 
-    def settype(self, s):
-        if s == "true":
-            self.ttype = "BOOL"
-            self.val = True
-        elif s == "false":
-            self.ttype = "BOOL"
-            self.val = False
-        elif s == "INT":
+        if s == "INT":
             self.ttype = "TYPE"
             self.val = int
         elif s == "BOOL":
             self.ttype = "TYPE"
             self.val = bool
+
         elif s == "if":
             self.ttype = "IF"
         elif s == "then":
             self.ttype = "THEN"
         elif s == "else":
             self.ttype = "ELSE"
-        elif s == "with":
-            self.ttype = "WITH"
+
+        elif s == "let":
+            self.ttype = "LET"
+        elif s == "in":
+            self.ttype = "IN"
+        elif s == "of":
+            self.ttype = "OF"
+
+        elif s == "true":
+            self.ttype = "BOOL"
+            self.val = True
+        elif s == "false":
+            self.ttype = "BOOL"
+            self.val = False
         elif re.fullmatch(INT_RE, s):
             self.ttype = "INT"
             self.val = int(s)
         elif re.fullmatch(LABEL_RE, s):
             self.ttype = "LABEL"
             self.val = s
-        elif s in "[]()":
-            self.ttype = s
-        elif s == "=":
-            self.ttype = "EQUAL"
-        elif s == "!":
-            self.ttype = "LABEL"
-            self.val = '!'
-        elif s == "->":
-            self.ttype = "ARROW"
-        elif s == ":":
-            self.ttype = "COLON"
-        elif s == ",":
-            self.ttype = "COMMA"
-        elif s == "~":
-            self.ttype = "TILDE"
-        elif s in PUNCT:
-            self.ttype = "LABEL"
+
+        elif s in BINOP_PRECS:
+            self.ttype = "BINOP"
             self.val = s
+        elif s in COMPARISONS:
+            self.ttype = "COMPARISON"
+            self.val = s
+        elif s in LOGIC:
+            self.ttype = "LOGIC"
+            self.val = s
+
+        elif s in PUNCT:
+            self.ttype = s
+
         else:
             self.ttype = None
 
     def __str__(self):
-        return self.s
+        return f"<Token line: {self.line_no}, col: {self.col_no}, s: {repr(self.s)}, type: {self.ttype}, value: {repr(self.val)}>"
 
     def __repr__(self):
-        return repr(str(self))
+        return str(self)
 
 
 class Tokenizer:
@@ -80,14 +120,16 @@ class Tokenizer:
             if line[i] in ' \t\r\n':
                 i += 1
                 continue
+
             elif re.match(LABEL_RE, rest):
                 s = re.match(LABEL_RE, rest).groups()[0]
+
             elif re.match(INT_RE, rest):
                 s = re.match(INT_RE, rest).groups()[0]
-            elif rest[:2] in PUNCT:
+
+            elif rest[:2] in ALL_PUNCTUATION:
                 s = rest[:2]
-            elif rest[0] in PUNCT:
-                s = rest[0]
+
             else:
                 s = rest[0]
 

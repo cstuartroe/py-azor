@@ -1,3 +1,5 @@
+#!/home/cstuartroe/git_repos/azor/venv/bin/python
+
 import sys
 
 from src.tokens import Tokenizer
@@ -14,5 +16,5 @@ if __name__ == "__main__":
     p = Parser(t)
     tc = TypeChecker(p)
     tc.check()
-    tc.evaluate()
-    tc.execute_main()
+    # tc.evaluate()
+    # tc.execute_main()
