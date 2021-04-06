@@ -26,14 +26,18 @@ int_array_to_str : [INT](l : [INT]) = if first ~ rest <- l
                                       then concat(concat(itos(first), [32]), int_array_to_str(rest))
                                       else [] of INT
 
-zip_ints : [(INT, INT)](l1 : [INT], l2 : [INT]) = if first1 ~ rest1 <- l1
-                                                  then
-                                                      if first2 ~ rest2 <- l2
-                                                      then (first1, first2) ~ zip(rest1, rest2)
-                                                      else [] of (INT, INT)
-                                                  else [] of (INT, INT)
+concat : [INT](l1 : [INT], l2 : [INT]) = if first ~ rest <- l1
+                                         then first ~ concat(rest, l2)
+                                         else l2
 
-square : INT(n : INT) = n ^ 2
+zip : [(INT, INT)](l1 : [INT], l2 : [INT]) = if first1 ~ rest1 <- l1
+                                             then
+                                                 if first2 ~ rest2 <- l2
+                                                 then (first1, first2) ~ zip(rest1, rest2)
+                                                 else [] of (INT, INT)
+                                             else [] of (INT, INT)
+
+square : INT(n : INT) = n ** 2
 
 map : [INT](f : INT(INT), l : [INT]) = if head ~ tail <- l
                                        then f(head) ~ map(f, tail)

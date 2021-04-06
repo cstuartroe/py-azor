@@ -11,10 +11,10 @@ class AzorType:
             self.constituents = constituents
         elif atype == "FUNCTION":
             self.rtype = rtype
+            if argnames is not None and len(argtypes) != len(argnames):
+                raise ValueError()
             self.argtypes = argtypes
             self.argnames = argnames
-            if len(self.argtypes) != len(self.argnames):
-                raise ValueError()
 
     def __eq__(self, other):
         if self.atype != other.atype:

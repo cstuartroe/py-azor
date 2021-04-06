@@ -171,27 +171,34 @@ class TypeChecker:
             subenv = {}
             subenv.update(env)
 
-            tup, unpacked, main_expr = expr.left.left, expr.left.right, expr.right
+            dest, unpacked, main_expr = expr.left.left, expr.left.right, expr.right
+            unpacked_type = self.checkexpr(unpacked, env)
 
-            tuptype = self.checkexpr(unpacked, env)
-            if tuptype.atype != "TUPLE":
-                self.raise_error(unpacked, "Expected tuple but got " + str(tuptype))
+            if dest.expr_type == Expression.TUPLE:
+                if unpacked_type.atype != "TUPLE":
+                    self.raise_error(unpacked, "Expected tuple but got " + str(unpacked_type))
 
-            if len(tup.elements) != len(tuptype.constituents):
-                self.raise_error(tup, f"Mismatched number of elements: expected {len(tuptype.constituents)}")
+                if len(dest.elements) != len(unpacked_type.constituents):
+                    self.raise_error(dest, f"Mismatched number of elements: expected {len(unpacked_type.constituents)}")
 
-            for e, azortype in zip(tup.elements, tuptype.constituents):
-                if e.expr_type != Expression.SIMPLE or e.token.ttype != "LABEL":
-                    self.raise_error(e, "Can only unpack to label")
+                for e, azortype in zip(dest.elements, unpacked_type.constituents):
+                    if e.expr_type != Expression.SIMPLE or e.token.ttype != "LABEL":
+                        self.raise_error(e, "Can only unpack to label")
 
-                label = e.token.val
+                    label = e.token.val
 
-                if label in subenv:
-                    self.raise_error(e, "Duplicate variable name: " + label)
-                elif label in self.symbol_table:
-                    self.raise_error(e, "Shadows name from outer scope: " + label)
+                    if label in subenv:
+                        self.raise_error(e, "Duplicate variable name: " + label)
+                    elif label in self.symbol_table:
+                        self.raise_error(e, "Shadows name from outer scope: " + label)
 
-                subenv[label] = azortype
+                    subenv[label] = azortype
+
+            elif dest.expr_type == Expression.SIMPLE and dest.token.ttype == "LABEL":
+                subenv[dest.token.val] = unpacked_type
+
+            else:
+                self.raise_error(dest, "Invalid left-hand side for assignment")
 
             return self.checkexpr(main_expr, subenv)
 
@@ -239,7 +246,7 @@ class TypeChecker:
         else:
             self.raise_error(node, "Invalid type")
 
-        if node.argnames:
+        if node.argtypes:
             return AzorType(
                 atype="FUNCTION",
                 rtype=basictype,

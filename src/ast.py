@@ -69,15 +69,27 @@ class TypeNode:
 
     def __str__(self):
         if self.ttype == "LIST":
-            return f"[{self.etype}]"
+            basetype = f"[{self.etype}]"
         elif self.ttype == "TUPLE":
-            return f"({', '.join(map(str, self.constituents))})"
+            basetype = f"({', '.join(map(str, self.constituents))})"
         elif self.ttype == "SIMPLE":
             if self.simpletype == bool:
-                return "BOOL"
-            if self.simpletype == int:
-                return "INT"
-        raise ValueError
+                basetype = "BOOL"
+            elif self.simpletype == int:
+                basetype = "INT"
+            else:
+                raise ValueError
+        else:
+            raise ValueError
+
+        if self.argtypes:
+            if self.argnames:
+                argstr = ', '.join(f'{argname} : {argtype}' for argname, argtype in zip(self.argnames, self.argtypes))
+            else:
+                argstr = ', '.join(str(argtype) for argtype in self.argtypes)
+            return f"{basetype}({argstr})"
+        else:
+            return basetype
 
 
 class Declaration:
