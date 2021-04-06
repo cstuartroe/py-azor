@@ -5,6 +5,7 @@ import sys
 from src.tokens import Tokenizer
 from src.parser import Parser
 from src.typecheck import TypeChecker
+from src.evaluate import Interpreter
 
 
 if __name__ == "__main__":
@@ -16,5 +17,5 @@ if __name__ == "__main__":
     p = Parser(t)
     tc = TypeChecker(p)
     tc.check()
-    # tc.evaluate()
-    # tc.execute_main()
+    interpreter = Interpreter(tc.stmts)
+    print(''.join(chr(n) for n in interpreter.main()))

@@ -30,7 +30,6 @@ class Parser:
         stmts = []
         while self.i < len(self.tokens):
             stmts.append(self.grab_declaration())
-            print(stmts[-1])
 
         return stmts
 

@@ -134,6 +134,9 @@ class TypeChecker:
             for argtype, e in zip(functype.argtypes, expr.args.elements):
                 self.assert_expr(argtype, e, env)
 
+            # this is ugly but must be done for interpreter
+            expr.argnames = functype.argnames
+
             return functype.rtype
 
         elif expr.expr_type == Expression.IF:

@@ -23,7 +23,7 @@ range : [INT](n : INT) = if n <= 0
                          else (n - 1) ~ range(n - 1)
 
 int_array_to_str : [INT](l : [INT]) = if first ~ rest <- l
-                                      then concat(concat(itos(first), [32]), int_array_to_str(rest))
+                                      then concat(concat(itos(first), [44, 32]), int_array_to_str(rest))
                                       else [] of INT
 
 concat : [INT](l1 : [INT], l2 : [INT]) = if first ~ rest <- l1
