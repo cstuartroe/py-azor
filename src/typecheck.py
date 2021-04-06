@@ -9,6 +9,7 @@ from .types import (
     ARITH_TYPE,
     LOGIC_TYPE,
     COMPARE_TYPE,
+    INT_LIST,
     PRINT_TYPE,
     INPUT_TYPE,
     RAND_TYPE,
@@ -119,6 +120,8 @@ class TypeChecker:
                 return BOOL
             elif expr.token.ttype == "INT":
                 return INT
+            elif expr.token.ttype == "STRING":
+                return INT_LIST
 
         elif expr.expr_type == Expression.LIST:
             azortype = AzorType("LIST")
@@ -213,7 +216,14 @@ class TypeChecker:
                     subenv[label] = azortype
 
             elif dest.expr_type == Expression.SIMPLE and dest.token.ttype == "LABEL":
-                subenv[dest.token.val] = unpacked_type
+                label = dest.token.val
+
+                if label in subenv:
+                    self.raise_error(dest, "Duplicate variable name: " + label)
+                elif label in self.symbol_table:
+                    self.raise_error(dest, "Shadows name from outer scope: " + label)
+
+                subenv[label] = unpacked_type
 
             else:
                 self.raise_error(dest, "Invalid left-hand side for assignment")
@@ -264,7 +274,7 @@ class TypeChecker:
         else:
             self.raise_error(node, "Invalid type")
 
-        if node.argtypes:
+        if node.argtypes is not None:
             return AzorType(
                 atype="FUNCTION",
                 rtype=basictype,

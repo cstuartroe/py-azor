@@ -99,6 +99,11 @@ class Token:
         elif s in PUNCT:
             self.ttype = s
 
+        elif s.startswith('"'):
+            val = parse_string(s)
+            self.ttype = "STRING" if (val is not None) else None
+            self.val = val
+
         else:
             self.ttype = None
 
@@ -108,6 +113,55 @@ class Token:
     def __repr__(self):
         return str(self)
 
+
+ESCAPES = {
+    't': '\t',
+    'r': '\r',
+    'n': '\n',
+    '\\': '\\',
+    '"': '"',
+}
+
+
+def parse_string(s):
+    assert s.startswith('"') and s.endswith('"') and len(s) >= 2
+
+    body = s[1:-1]
+    i = 0
+    out = ""
+
+    while i < len(body):
+        if body[i] == '\\':
+            if len(body) >= i + 2 and body[i+1] in ESCAPES:
+                out += ESCAPES[body[i+1]]
+                i += 2
+            else:
+                return None
+        else:
+            out += body[i]
+            i += 1
+
+    return [ord(c) for c in out]
+
+
+def grab_string(line):
+    assert line[0] == '"'
+    out = line[0]
+    i = 1
+    while i < len(line):
+        if len(line) >= i + 2 and line[i:i+2] == '\\"':
+            jump = 2
+        else:
+            jump = 1
+
+        c = line[i:i+jump]
+        out += c
+        i += jump
+
+        if c == '"':
+            return out
+
+    raise ValueError
 
 class Tokenizer:
     def __init__(self, lines):
@@ -129,6 +183,12 @@ class Tokenizer:
 
             elif rest[:2] in ALL_PUNCTUATION:
                 s = rest[:2]
+
+            elif rest[0] == '"':
+                try:
+                    s = grab_string(rest)
+                except ValueError:
+                    self.raise_error(Token(line_no=line_no, col_no=i, s=""), "Invalid string")
 
             else:
                 s = rest[0]

@@ -121,7 +121,7 @@ class Parser:
         return (argnames if vbl_names else None), argtypes
 
     def grab_expr(self, suffix_precedence):
-        if self.next().ttype in {"LABEL", "BOOL", "INT"}:
+        if self.next().ttype in {"LABEL", "BOOL", "INT", "STRING"}:
             n = Expression(self.next(), Expression.SIMPLE)
             self.i += 1
 

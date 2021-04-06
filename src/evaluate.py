@@ -124,7 +124,7 @@ class Interpreter:
                 return env[token.val]
             else:
                 return self.evaluate_global(token.val)
-        elif token.ttype in ["BOOL", "INT"]:
+        elif token.ttype in ["BOOL", "INT", "STRING"]:
             return token.val
         else:
             raise ValueError(f"Unknown simple type: {token.ttype}")
