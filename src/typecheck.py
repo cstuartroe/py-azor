@@ -1,7 +1,19 @@
 from typing import Dict, List
 from .tokens import BINOP_PRECS, COMPARISONS, LOGIC
 from .parser import Expression, TypeNode, Declaration, Parser
-from .types import AzorType, BOOL, INT, NOT_TYPE, ARITH_TYPE, LOGIC_TYPE, COMPARE_TYPE, MAINTYPE
+from .types import (
+    AzorType,
+    BOOL,
+    INT,
+    NOT_TYPE,
+    ARITH_TYPE,
+    LOGIC_TYPE,
+    COMPARE_TYPE,
+    PRINT_TYPE,
+    INPUT_TYPE,
+    RAND_TYPE,
+    MAIN_TYPE,
+)
 
 BINOP_TYPES = {
     '+': ARITH_TYPE,
@@ -28,6 +40,13 @@ BINOP_TYPES = {
 assert set(BINOP_TYPES.keys()) == (set(BINOP_PRECS.keys()) | COMPARISONS | LOGIC)
 
 
+SIDE_EFFECT_TYPES = {
+    "print": PRINT_TYPE,
+    "input": INPUT_TYPE,
+    "rand": RAND_TYPE,
+}
+
+
 class LHS:
     def __init__(self, label: str, azortype: AzorType):
         self.label = label
@@ -40,7 +59,7 @@ class LHS:
 class TypeChecker:
     def __init__(self, parser: Parser):
         self.parser = parser
-        self.symbol_table: Dict[str, AzorType] = {}
+        self.symbol_table: Dict[str, AzorType] = {**SIDE_EFFECT_TYPES}
         self.stmts_by_label: Dict[str, Declaration] = {}
         self.stmts: List[Declaration] = self.parser.parse()
 
@@ -54,8 +73,8 @@ class TypeChecker:
 
         if "main" not in self.symbol_table:
             self.raise_error(self.stmts[-1], "No main method defined")
-        elif self.symbol_table["main"] != MAINTYPE:
-            self.raise_error(self.stmts_by_label["main"], "Main method must have type " + str(MAINTYPE))
+        elif self.symbol_table["main"] != MAIN_TYPE:
+            self.raise_error(self.stmts_by_label["main"], "Main method must have type " + str(MAIN_TYPE))
 
         for label in self.stmts_by_label:
             self.checkstmt(label)

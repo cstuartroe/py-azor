@@ -59,4 +59,4 @@ itosHelper : [INT](n : INT) = let lastDigit <- n % 10
 
 itos : [INT](n : INT) = reverse(itosHelper(n))
 
-main : [INT] = int_array_to_str(map(square, range(10)))
+main : INT = let _ <- print(int_array_to_str(map(square, range(10)))) in 0

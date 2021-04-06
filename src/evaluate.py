@@ -1,4 +1,5 @@
 from typing import List
+from random import randrange
 from src.tokens import Token
 from src.ast import Declaration, Expression
 from src.typecheck import BINOP_TYPES
@@ -26,6 +27,26 @@ BINOPS = {
 }
 
 
+def AzorPrint(nums):
+    print(''.join([chr(n) for n in nums]), end='')
+
+
+def AzorInput():
+    s = input()
+    return [ord(c) for c in s]
+
+
+def AzorRand(n):
+    return randrange(n)
+
+
+SIDE_EFFECT_FUNCTIONS = {
+    "print": AzorPrint,
+    "input": AzorInput,
+    "rand": AzorRand,
+}
+
+
 assert set(BINOPS.keys()) == set(BINOP_TYPES.keys())
 
 
@@ -35,7 +56,7 @@ class Interpreter:
         for stmt in stmts:
             self.stmts_by_label[stmt.label.val] = stmt
 
-        self.symbol_table = {}
+        self.symbol_table = {**SIDE_EFFECT_FUNCTIONS}
 
     def main(self):
         return self.evaluate_global("main")
@@ -105,10 +126,8 @@ class Interpreter:
         if token.ttype == "LABEL":
             if token.val in env:
                 return env[token.val]
-            elif token.val in self.stmts_by_label:
-                return self.evaluate_global(token.val)
             else:
-                raise ValueError(f"Label has not been assigned: {token.val}")
+                return self.evaluate_global(token.val)
         elif token.ttype in ["BOOL", "INT"]:
             return token.val
         else:

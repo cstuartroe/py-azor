@@ -18,4 +18,4 @@ if __name__ == "__main__":
     tc = TypeChecker(p)
     tc.check()
     interpreter = Interpreter(tc.stmts)
-    print(''.join(chr(n) for n in interpreter.main()))
+    sys.exit(interpreter.main())

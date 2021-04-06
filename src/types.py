@@ -46,4 +46,10 @@ NOT_TYPE = AzorType("FUNCTION", rtype=BOOL, argtypes=[BOOL], argnames=["b"])
 ARITH_TYPE = AzorType("FUNCTION", rtype=INT, argtypes=[INT, INT], argnames=["m", "n"])
 COMPARE_TYPE = AzorType("FUNCTION", rtype=BOOL, argtypes=[INT, INT], argnames=["m", "n"])
 LOGIC_TYPE = AzorType("FUNCTION", rtype=BOOL, argtypes=[BOOL, BOOL], argnames=["a", "b"])
-MAINTYPE = AzorType("LIST", etype=INT)
+
+INT_LIST = AzorType("LIST", etype=INT)
+
+PRINT_TYPE = AzorType("FUNCTION", rtype=INT_LIST, argtypes=[INT_LIST])
+INPUT_TYPE = AzorType("FUNCTION", rtype=INT_LIST, argtypes=[])
+RAND_TYPE = AzorType("FUNCTION", rtype=INT, argtypes=[INT])
+MAIN_TYPE = AzorType("INT")
