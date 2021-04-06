@@ -133,14 +133,10 @@ class TypeChecker:
             return azortype
 
         elif expr.expr_type == Expression.TUPLE:
-            if len(expr.elements) == 1:
-                return self.checkexpr(expr.elements[0], env)
-
-            else:
-                azortype = AzorType("TUPLE", constituents=[])
-                for e in expr.elements:
-                    azortype.constituents.append(self.checkexpr(e, env))
-                return azortype
+            azortype = AzorType("TUPLE", constituents=[])
+            for e in expr.elements:
+                azortype.constituents.append(self.checkexpr(e, env))
+            return azortype
 
         elif expr.expr_type == Expression.CALL:
             functype = self.checkexpr(expr.left, env)

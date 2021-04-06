@@ -82,11 +82,7 @@ class Interpreter:
             return self.evaluate_simple(expr.token, env)
 
         elif expr.expr_type == Expression.TUPLE:
-            t = tuple(self.evaluate_expression(e, env) for e in expr.elements)
-            if len(t) == 1:
-                return t[0]
-            else:
-                return t
+            return tuple(self.evaluate_expression(e, env) for e in expr.elements)
 
         elif expr.expr_type == Expression.LIST:
             return [self.evaluate_expression(e, env) for e in expr.elements]

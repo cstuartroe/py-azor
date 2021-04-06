@@ -72,9 +72,10 @@ class Parser:
             self.i += 1
         elif t.ttype == "(":
             self.i += 1
+            constituents, _ = self.grab_series(self.grab_type_node)
             out = TypeNode(
                 ttype=TypeNode.TUPLE,
-                constituents=self.grab_series(self.grab_type_node),
+                constituents=constituents,
                 token=t,
             )
             self.expect(")")
@@ -129,6 +130,8 @@ class Parser:
 
         elif self.next().ttype == '(':
             n = self.grab_tuple()
+            if len(n.elements) == 1 and not n.ended_with_comma:
+                n = n.elements[0]
 
         elif self.next().ttype == "IF":
             n = self.grab_if()
@@ -148,7 +151,7 @@ class Parser:
         out = Expression(self.next(), Expression.LIST)
         self.expect("[")
 
-        out.elements = self.grab_series(lambda: self.grab_expr(-1))
+        out.elements, _ = self.grab_series(lambda: self.grab_expr(-1))
 
         self.expect(']')
 
@@ -166,7 +169,7 @@ class Parser:
 
         if self.next().ttype == "<-":
             if condition.expr_type != Expression.CONS:
-                self.tokenizer.raise_error(condition.start_token,
+                self.tokenizer.raise_error(condition.token,
                                            "If unpacking must be a ~ expression")
             for e in condition.left, condition.right:
                 if e.expr_type != Expression.SIMPLE or e.token.ttype != "LABEL":
@@ -200,7 +203,7 @@ class Parser:
         out = Expression(self.next(), Expression.TUPLE)
         self.expect("(")
 
-        out.elements = self.grab_series(lambda: self.grab_expr(-1))
+        out.elements, out.ended_with_comma = self.grab_series(lambda: self.grab_expr(-1))
 
         self.expect(")")
 
@@ -249,10 +252,12 @@ class Parser:
 
     def grab_series(self, grabber):
         elems = []
+        ended_with_comma = True
         while self.next().ttype not in "])":
             elems.append(grabber())
             if self.next().ttype == ",":
                 self.i += 1
             else:
+                ended_with_comma = False
                 break
-        return elems
+        return elems, ended_with_comma
