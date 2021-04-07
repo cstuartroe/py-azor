@@ -36,7 +36,10 @@ class AzorType:
         elif self.atype == "TUPLE":
             return f"({', '.join(str(c) for c in self.constituents)})"
         elif self.atype == "FUNCTION":
-            l = [f"{name}:{azortype}" for name, azortype in zip(self.argnames, self.argtypes)]
+            if self.argnames is not None:
+                l = [f"{name} : {azortype}" for name, azortype in zip(self.argnames, self.argtypes)]
+            else:
+                l = map(str, self.argtypes)
             return f"{self.rtype}({', '.join(l)})"
 
 

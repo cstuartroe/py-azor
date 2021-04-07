@@ -74,17 +74,21 @@ class TypeChecker:
 
         if "main" not in self.symbol_table:
             self.raise_error(self.stmts[-1], "No main method defined")
-        elif self.symbol_table["main"] != MAIN_TYPE:
-            self.raise_error(self.stmts_by_label["main"], "Main method must have type " + str(MAIN_TYPE))
 
         for label in self.stmts_by_label:
             self.checkstmt(label)
+
+        if self.symbol_table["main"] != MAIN_TYPE:
+            self.raise_error(self.stmts_by_label["main"], "Main method must have type " + str(MAIN_TYPE))
 
     def checkstmt(self, label):
         stmt = self.stmts_by_label[label]
         azortype = self.symbol_table[label]
 
-        if azortype.atype == "FUNCTION":
+        if azortype is None:
+            self.symbol_table[label] = self.checkexpr(stmt.rhs, {})
+
+        elif azortype.atype == "FUNCTION":
             env = {}
 
             for argname, argtype in zip(azortype.argnames, azortype.argtypes):
@@ -95,7 +99,10 @@ class TypeChecker:
 
                 env[argname] = argtype
 
-            self.assert_expr(azortype.rtype, stmt.rhs, env)
+            if azortype.rtype is None:
+                azortype.rtype = self.checkexpr(stmt.rhs, env)
+            else:
+                self.assert_expr(azortype.rtype, stmt.rhs, env)
 
         else:
             self.assert_expr(azortype, stmt.rhs, {})
@@ -270,6 +277,9 @@ class TypeChecker:
 
         elif node.ttype == TypeNode.TUPLE:
             basictype = AzorType("TUPLE", constituents=[self.eval_type(el) for el in node.constituents])
+
+        elif node.ttype == TypeNode.EMPTY:
+            basictype = None
 
         else:
             self.raise_error(node, "Invalid type")

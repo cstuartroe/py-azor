@@ -51,6 +51,7 @@ class TypeNode:
     SIMPLE = "SIMPLE"
     LIST = "LIST"
     TUPLE = "TUPLE"
+    EMPTY = "EMPTY"
 
     def __init__(self, token, ttype, simpletype=None, etype=None, constituents=None):
         self.token = token
@@ -64,21 +65,25 @@ class TypeNode:
             self.constituents = constituents
         elif ttype == TypeNode.SIMPLE:
             self.simpletype = simpletype
+        elif ttype == TypeNode.EMPTY:
+            pass
         else:
             raise ValueError
 
     def __str__(self):
-        if self.ttype == "LIST":
+        if self.ttype == TypeNode.LIST:
             basetype = f"[{self.etype}]"
-        elif self.ttype == "TUPLE":
+        elif self.ttype == TypeNode.TUPLE:
             basetype = f"({', '.join(map(str, self.constituents))})"
-        elif self.ttype == "SIMPLE":
+        elif self.ttype == TypeNode.SIMPLE:
             if self.simpletype == bool:
                 basetype = "BOOL"
             elif self.simpletype == int:
                 basetype = "INT"
             else:
                 raise ValueError
+        elif self.ttype == TypeNode.EMPTY:
+            basetype = ""
         else:
             raise ValueError
 
