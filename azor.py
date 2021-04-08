@@ -9,13 +9,9 @@ from src.evaluate import Interpreter
 
 
 if __name__ == "__main__":
-    with open(sys.argv[1], "r") as fh:
-        code = fh.read().replace('\t', '    ')
+    stmts = Parser.parse_file(sys.argv[1])
 
-    lines = code.split("\n")
-    t = Tokenizer(lines)
-    p = Parser(t)
-    tc = TypeChecker(p)
-    tc.check()
-    interpreter = Interpreter(tc.stmts)
+    TypeChecker(stmts).check()
+
+    interpreter = Interpreter(stmts)
     sys.exit(interpreter.main())

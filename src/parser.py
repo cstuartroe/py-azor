@@ -18,9 +18,17 @@ class Parser:
         else:
             raise ValueError
 
-    def __init__(self, tokenizer: Tokenizer):
-        self.tokenizer = tokenizer
-        self.tokens = tokenizer.tokenize()
+    @classmethod
+    def parse_file(cls, filename):
+        with open(filename, "r") as fh:
+            code = fh.read().replace('\t', '    ')
+
+        lines = code.split("\n")
+        tokens = Tokenizer(lines).tokenize()
+        return cls(tokens).parse()
+
+    def __init__(self, tokens):
+        self.tokens = tokens
         self.i = 0
         self.lhs = False
 
@@ -35,7 +43,7 @@ class Parser:
 
     def next(self):
         if self.i >= len(self.tokens):
-            self.tokenizer.raise_error(self.tokens[-1], "Unexpected EOF")
+            self.tokens[-1].raise_error("Unexpected EOF")
         return self.tokens[self.i]
 
     def eof(self):
@@ -43,7 +51,7 @@ class Parser:
 
     def expect(self, ttype):
         if self.next().ttype != ttype:
-            self.tokenizer.raise_error(self.next(), "Expected " + ttype)
+            self.next().raise_error("Expected " + ttype)
         self.i += 1
 
     def grab_declaration(self):
@@ -67,7 +75,7 @@ class Parser:
             self.expect("}")
             for g in generics:
                 if g.expr_type != Expression.SIMPLE or g.token.ttype != "LABEL":
-                    self.tokenizer.raise_error(g, "Generic names must be labels")
+                    g.token.raise_error("Generic names must be labels")
 
         else:
             generics = []
@@ -106,15 +114,15 @@ class Parser:
                 token=t,
             )
         else:
-            self.tokenizer.raise_error(t, "Illegal start to type")
+            t.raise_error("Illegal start to type")
 
-        if self.next().ttype == "(":
+        if not self.eof() and self.next().ttype == "(":
             argnames, argtypes = self.grab_type_node_args(vbl_names)
             out.argnames = argnames
             out.argtypes = argtypes
             out.generics = generics
         elif generics:
-            self.tokenizer.raise_error(generics[0].token, "Cannot use generics for a non-function type")
+            generics[0].token.raise_error("Cannot use generics for a non-function type")
 
         return out
 
@@ -161,10 +169,10 @@ class Parser:
             n = self.grab_let()
 
         elif self.next().ttype in ")]}":
-            self.tokenizer.raise_error(self.next(), "Mismatched braces")
+            self.next().raise_error("Mismatched braces")
 
         else:
-            self.tokenizer.raise_error(self.next(), "Invalid start to expression")
+            self.next().raise_error("Invalid start to expression")
 
         return self.check_suffixes(n, suffix_precedence)
 
@@ -190,11 +198,10 @@ class Parser:
 
         if self.next().ttype == "<-":
             if condition.expr_type != Expression.CONS:
-                self.tokenizer.raise_error(condition.token,
-                                           "If unpacking must be a ~ expression")
+                condition.token.raise_error("If unpacking must be a ~ expression")
             for e in condition.left, condition.right:
                 if e.expr_type != Expression.SIMPLE or e.token.ttype != "LABEL":
-                    self.tokenizer.raise_error(e.start_token, "Must be a label")
+                    e.token.raise_error("Must be a label")
 
             condition = self.grab_arrow(condition)
 

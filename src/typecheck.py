@@ -56,11 +56,10 @@ class LHS:
 
 
 class TypeChecker:
-    def __init__(self, parser: Parser):
-        self.parser = parser
+    def __init__(self, stmts: List[Declaration]):
+        self.stmts = stmts
         self.symbol_table: Dict[str, AzorType] = {**SIDE_EFFECT_TYPES}
         self.stmts_by_label: Dict[str, Declaration] = {}
-        self.stmts: List[Declaration] = self.parser.parse()
 
     def check(self):
         for stmt in self.stmts:
@@ -276,7 +275,7 @@ class TypeChecker:
         raise RuntimeError("Didn't return??")
 
     def raise_error(self, node, message):
-        self.parser.tokenizer.raise_error(node.token, message)
+        node.token.raise_error(message)
 
     def parselhs(self, stmt: Declaration):
         azortype = self.eval_type(stmt.typehint)
