@@ -83,7 +83,10 @@ class TypeChecker:
         azortype = self.symbol_table[label]
 
         if azortype is None:
-            self.symbol_table[label] = self.checkexpr(stmt.rhs, {}, generics=set())
+            t = self.checkexpr(stmt.rhs, {}, generics=set())
+            assert t is not None
+            self.symbol_table[label] = t
+
 
         elif azortype.atype == "FUNCTION":
             env = {}
@@ -98,6 +101,7 @@ class TypeChecker:
 
             if azortype.rtype is None:
                 azortype.rtype = self.checkexpr(stmt.rhs, env, generics=set(azortype.generics))
+                assert azortype.rtype is not None
             else:
                 self.assert_expr(
                     azortype=azortype.rtype,
@@ -125,8 +129,16 @@ class TypeChecker:
                 label = expr.token.val
                 if label in env:
                     return env[label]
+
                 elif label in self.symbol_table:
-                    return self.symbol_table[label]
+                    t: AzorType = self.symbol_table[label]
+                    if t is None or (t.atype == "FUNCTION" and t.rtype is None):
+                        try:
+                            self.checkstmt(label)
+                        except RecursionError:
+                            self.raise_error(expr, "Recursion or mutual recursion of implicit typing detected")
+                    return t
+
                 else:
                     self.raise_error(expr, "Label not assigned: " + label)
 
