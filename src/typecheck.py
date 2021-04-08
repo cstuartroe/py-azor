@@ -209,7 +209,7 @@ class TypeChecker:
                 subenv = env
 
             thentype = self.checkexpr(expr.left, subenv, generics)
-            elsetype = self.checkexpr(expr.right, subenv, generics)
+            elsetype = self.checkexpr(expr.right, env, generics)
             if thentype != elsetype:
                 self.raise_error(expr, f"Then and else have different types: {str(thentype)} and {str(elsetype)}")
             return thentype
