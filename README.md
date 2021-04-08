@@ -15,3 +15,7 @@ It does require that you have the `azor` submodule of this repo downloaded, beca
 ## Usage
 
 `python azor.py path/to/something.azor`
+
+Not sure what file to run? Try
+
+`python azor.py azor/tests/test.azor`
