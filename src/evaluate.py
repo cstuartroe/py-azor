@@ -78,6 +78,12 @@ class Interpreter:
         return self.symbol_table[name]
 
     def evaluate_expression(self, expr: Expression, env):
+        try:
+            return self.evaluate_expression_unsafe(expr, env)
+        except RecursionError:
+            expr.token.raise_error("Maximum recursion depth exceeded evaluating this expression")
+
+    def evaluate_expression_unsafe(self, expr: Expression, env):
         if expr.expr_type == Expression.SIMPLE:
             return self.evaluate_simple(expr.token, env)
 

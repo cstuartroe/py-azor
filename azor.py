@@ -12,4 +12,8 @@ if __name__ == "__main__":
     TypeChecker(stmts).check()
 
     interpreter = Interpreter(stmts)
-    sys.exit(interpreter.main())
+
+    try:
+        sys.exit(interpreter.main())
+    except KeyboardInterrupt:
+        pass
