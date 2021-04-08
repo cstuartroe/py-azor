@@ -39,14 +39,17 @@ PUNCT = {
     ")",
     "[",
     "]",
-    "!"
+    "!",
+    "{",
+    "}",
 }
 
 ALL_PUNCTUATION = set(BINOP_PRECS.keys()) | COMPARISONS | LOGIC | PUNCT
 
 
 class Token:
-    def __init__(self, line_no, col_no, s):
+    def __init__(self, line, line_no, col_no, s):
+        self.line = line
         self.line_no = line_no
         self.col_no = col_no
         self.s = s
@@ -105,13 +108,20 @@ class Token:
             self.val = val
 
         else:
-            self.ttype = None
+            self.raise_error("Bad token")
 
     def __str__(self):
         return f"<Token line: {self.line_no}, col: {self.col_no}, s: {repr(self.s)}, type: {self.ttype}, value: {repr(self.val)}>"
 
     def __repr__(self):
         return str(self)
+
+    def raise_error(self, message):
+        s = self.line + "\n"
+        s += ' '*self.col_no + '^' + "\n"
+        s += f"(line {self.line_no + 1}, column {self.col_no + 1}) " + message
+        print(s)
+        sys.exit()
 
 
 ESCAPES = {
@@ -163,6 +173,7 @@ def grab_string(line):
 
     raise ValueError
 
+
 class Tokenizer:
     def __init__(self, lines):
         self.lines = lines
@@ -188,14 +199,12 @@ class Tokenizer:
                 try:
                     s = grab_string(rest)
                 except ValueError:
-                    self.raise_error(Token(line_no=line_no, col_no=i, s=""), "Invalid string")
+                    Token(line=line, line_no=line_no, col_no=i, s="").raise_error("Invalid string")
 
             else:
                 s = rest[0]
 
-            token = Token(line_no=line_no, col_no=i, s=s)
-            if token.ttype is None:
-                self.raise_error(token, "Bad token")
+            token = Token(line=line, line_no=line_no, col_no=i, s=s)
 
             i += len(s)
             yield token
@@ -205,10 +214,3 @@ class Tokenizer:
         for line_no, line in enumerate(self.lines):
             tokens += self.grab_tokens(line_no, line)
         return tokens
-
-    def raise_error(self, token, message):
-        s = self.lines[token.line_no] + "\n"
-        s += ' '*token.col_no + '^' + "\n"
-        s += f"(line {token.line_no}, column {token.col_no}) " + message
-        print(s)
-        sys.exit()

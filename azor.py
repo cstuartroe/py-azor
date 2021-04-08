@@ -1,21 +1,19 @@
-#!/home/cstuartroe/git_repos/azor/venv/bin/python
-
 import sys
 
-from src.tokens import Tokenizer
 from src.parser import Parser
 from src.typecheck import TypeChecker
 from src.evaluate import Interpreter
 
 
 if __name__ == "__main__":
-    with open(sys.argv[1], "r") as fh:
-        code = fh.read().replace('\t', '    ')
+    stdlib_stmts = Parser.parse_file("azor/stdlib.azor")
+    stmts = stdlib_stmts + Parser.parse_file(sys.argv[1])
 
-    lines = code.split("\n")
-    t = Tokenizer(lines)
-    p = Parser(t)
-    tc = TypeChecker(p)
-    tc.check()
-    interpreter = Interpreter(tc.stmts)
-    sys.exit(interpreter.main())
+    TypeChecker(stmts).check()
+
+    interpreter = Interpreter(stmts)
+
+    try:
+        sys.exit(interpreter.main())
+    except KeyboardInterrupt:
+        pass

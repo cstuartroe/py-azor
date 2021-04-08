@@ -78,6 +78,12 @@ class Interpreter:
         return self.symbol_table[name]
 
     def evaluate_expression(self, expr: Expression, env):
+        try:
+            return self.evaluate_expression_unsafe(expr, env)
+        except RecursionError:
+            expr.token.raise_error("Maximum recursion depth exceeded evaluating this expression")
+
+    def evaluate_expression_unsafe(self, expr: Expression, env):
         if expr.expr_type == Expression.SIMPLE:
             return self.evaluate_simple(expr.token, env)
 
@@ -103,10 +109,7 @@ class Interpreter:
             ]
 
         elif expr.expr_type == Expression.LET:
-            label = expr.left.left.token.val
-            value = self.evaluate_expression(expr.left.right, env)
-            subenv = {**env, label: value}
-            return self.evaluate_expression(expr.right, subenv)
+            return self.evaluate_let(expr, env)
 
         elif expr.expr_type == Expression.CALL:
             callee = self.evaluate_expression(expr.left, env)
@@ -144,3 +147,22 @@ class Interpreter:
                 return self.evaluate_expression(expr.left, env)
             else:
                 return self.evaluate_expression(expr.right, env)
+
+    def evaluate_let(self, expr, env):
+        dest, source = expr.left.left, expr.left.right
+
+        if dest.expr_type == Expression.SIMPLE:
+            label = expr.left.left.token.val
+            value = self.evaluate_expression(expr.left.right, env)
+            subenv = {**env, label: value}
+
+        elif dest.expr_type == Expression.TUPLE:
+            subenv = {**env}
+            t = self.evaluate_expression(source, env)
+            for label_expr, val in zip(dest.elements, t):
+                subenv[label_expr.token.val] = val
+
+        else:
+            raise ValueError
+
+        return self.evaluate_expression(expr.right, subenv)
