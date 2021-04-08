@@ -2,14 +2,14 @@
 
 import sys
 
-from src.tokens import Tokenizer
 from src.parser import Parser
 from src.typecheck import TypeChecker
 from src.evaluate import Interpreter
 
 
 if __name__ == "__main__":
-    stmts = Parser.parse_file(sys.argv[1])
+    stdlib_stmts = Parser.parse_file("stdlib.azor")
+    stmts = stdlib_stmts + Parser.parse_file(sys.argv[1])
 
     TypeChecker(stmts).check()
 
