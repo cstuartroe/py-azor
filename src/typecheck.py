@@ -37,9 +37,7 @@ BINOP_TYPES = {
     '!^': LOGIC_TYPE,
 }
 
-
 assert set(BINOP_TYPES.keys()) == (set(BINOP_PRECS.keys()) | COMPARISONS | LOGIC)
-
 
 SIDE_EFFECT_TYPES = {
     "print": PRINT_TYPE,
@@ -99,7 +97,7 @@ class TypeChecker:
                 azortype=azortype.rtype,
                 expr=stmt.rhs,
                 env=env,
-                generics=azortype.generics,
+                generics=set(azortype.generics),
             )
 
         else:
@@ -166,7 +164,7 @@ class TypeChecker:
 
                 spec = {}
                 for generic_label, type_node in zip(functype.generics, expr.generic_spec):
-                    spec[generic_label] = self.eval_type(type_node, allowed_generics=generics)
+                    spec[generic_label] = self.eval_type(type_node, allowed_generics=set(generics))
 
                 functype = functype.resolve_generics(spec)
 
@@ -284,16 +282,16 @@ class TypeChecker:
         azortype = self.eval_type(stmt.typehint)
         return LHS(stmt.label.val, azortype)
 
-    def eval_type(self, node: TypeNode, allowed_generics=None):
+    def eval_type(self, node: TypeNode, allowed_generics: Set[str] = None):
         allowed_generics = allowed_generics or set()
 
-        declared_generics = set(g.token.val for g in (node.generics or []))
-        if len(allowed_generics & declared_generics) != 0:
+        declared_generics = [g.token.val for g in (node.generics or [])]
+        if len(allowed_generics & set(declared_generics)) != 0:
             self.raise_error(
                 node.generics[0],
-                f"Redeclared generic(s): {','.join(allowed_generics & declared_generics)}",
+                f"Redeclared generic(s): {','.join(allowed_generics & set(declared_generics))}",
             )
-        allowed_generics |= declared_generics
+        allowed_generics |= set(declared_generics)
 
         if node.ttype == TypeNode.SIMPLE:
             if node.simpletype == int:
@@ -317,7 +315,6 @@ class TypeChecker:
 
         elif node.ttype == TypeNode.GENERIC:
             if node.label.val not in allowed_generics:
-                print(allowed_generics)
                 self.raise_error(node, "This generic name was not declared")
             basictype = AzorType("GENERIC", label=node.label.val)
 
