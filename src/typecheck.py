@@ -71,17 +71,24 @@ class TypeChecker:
 
         if "main" not in self.symbol_table:
             self.raise_error(self.stmts[-1], "No main method defined")
-        elif self.symbol_table["main"] != MAIN_TYPE:
-            self.raise_error(self.stmts_by_label["main"], "Main method must have type " + str(MAIN_TYPE))
 
         for label in self.stmts_by_label:
             self.checkstmt(label)
+
+        if self.symbol_table["main"] != MAIN_TYPE:
+            self.raise_error(self.stmts_by_label["main"], "Main method must have type " + str(MAIN_TYPE))
 
     def checkstmt(self, label):
         stmt = self.stmts_by_label[label]
         azortype = self.symbol_table[label]
 
-        if azortype.atype == "FUNCTION":
+        if azortype is None:
+            t = self.checkexpr(stmt.rhs, {}, generics=set())
+            assert t is not None
+            self.symbol_table[label] = t
+
+
+        elif azortype.atype == "FUNCTION":
             env = {}
 
             for argname, argtype in zip(azortype.argnames, azortype.argtypes):
@@ -92,12 +99,16 @@ class TypeChecker:
 
                 env[argname] = argtype
 
-            self.assert_expr(
-                azortype=azortype.rtype,
-                expr=stmt.rhs,
-                env=env,
-                generics=set(azortype.generics),
-            )
+            if azortype.rtype is None:
+                azortype.rtype = self.checkexpr(stmt.rhs, env, generics=set(azortype.generics))
+                assert azortype.rtype is not None
+            else:
+                self.assert_expr(
+                    azortype=azortype.rtype,
+                    expr=stmt.rhs,
+                    env=env,
+                    generics=set(azortype.generics),
+                )
 
         else:
             self.assert_expr(
@@ -118,8 +129,16 @@ class TypeChecker:
                 label = expr.token.val
                 if label in env:
                     return env[label]
+
                 elif label in self.symbol_table:
-                    return self.symbol_table[label]
+                    t: AzorType = self.symbol_table[label]
+                    if t is None or (t.atype == "FUNCTION" and t.rtype is None):
+                        try:
+                            self.checkstmt(label)
+                        except RecursionError:
+                            self.raise_error(expr, "Recursion or mutual recursion of implicit typing detected")
+                    return t
+
                 else:
                     self.raise_error(expr, "Label not assigned: " + label)
 
@@ -316,6 +335,9 @@ class TypeChecker:
             if node.label.val not in allowed_generics:
                 self.raise_error(node, "This generic name was not declared")
             basictype = AzorType("GENERIC", label=node.label.val)
+
+        elif node.ttype == TypeNode.EMPTY:
+            basictype = None
 
         else:
             self.raise_error(node, "Invalid type")

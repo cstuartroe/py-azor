@@ -58,9 +58,22 @@ class Parser:
         label = self.next()
         self.expect("LABEL")
 
-        self.expect(":")
+        if self.next().ttype == ':':
+            self.i += 1
+            typehint = self.grab_type_node(vbl_names=True)
 
-        typehint = self.grab_type_node(vbl_names=True)
+        elif self.next().ttype == '(':
+            typehint = TypeNode(
+                ttype=TypeNode.EMPTY,
+                token=self.next(),
+            )
+            typehint.argnames, typehint.argtypes = self.grab_type_node_args(vbl_names=True)
+
+        else:
+            typehint = TypeNode(
+                ttype=TypeNode.EMPTY,
+                token=label,
+            )
 
         self.expect('=')
 
