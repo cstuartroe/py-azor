@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Set
 from .tokens import BINOP_PRECS, COMPARISONS, LOGIC
 from .parser import Expression, TypeNode, Declaration, Parser
 from .types import (
@@ -95,17 +95,27 @@ class TypeChecker:
 
                 env[argname] = argtype
 
-            self.assert_expr(azortype.rtype, stmt.rhs, env)
+            self.assert_expr(
+                azortype=azortype.rtype,
+                expr=stmt.rhs,
+                env=env,
+                generics=azortype.generics,
+            )
 
         else:
-            self.assert_expr(azortype, stmt.rhs, {})
+            self.assert_expr(
+                azortype=azortype,
+                expr=stmt.rhs,
+                env={},
+                generics=set(),
+            )
 
-    def assert_expr(self, azortype: AzorType, expr: Expression, env: Dict[str, AzorType]):
-        t = self.checkexpr(expr, env)
+    def assert_expr(self, azortype: AzorType, expr: Expression, env: Dict[str, AzorType], generics: Set[str]):
+        t = self.checkexpr(expr=expr, env=env, generics=generics)
         if t != azortype:
-            self.raise_error(expr, f"Does not have expect type (expected {azortype}, got {t}")
+            self.raise_error(expr, f"Does not have expected type (expected {azortype}, got {t})")
 
-    def checkexpr(self, expr: Expression, env: Dict[str, AzorType]) -> AzorType:
+    def checkexpr(self, expr: Expression, env: Dict[str, AzorType], generics: Set[str]) -> AzorType:
         if expr.expr_type == Expression.SIMPLE:
             if expr.token.ttype == "LABEL":
                 label = expr.token.val
@@ -126,31 +136,49 @@ class TypeChecker:
         elif expr.expr_type == Expression.LIST:
             azortype = AzorType("LIST")
             if len(expr.elements) == 0:
-                azortype.etype = self.eval_type(expr.typehint)
+                azortype.etype = self.eval_type(expr.typehint, allowed_generics=generics)
 
             else:
-                azortype.etype = self.checkexpr(expr.elements[0], env)
+                azortype.etype = self.checkexpr(expr.elements[0], env, generics)
                 for e in expr.elements[1:]:
-                    self.assert_expr(azortype.etype, e, env)
+                    self.assert_expr(azortype.etype, e, env, generics)
 
             return azortype
 
         elif expr.expr_type == Expression.TUPLE:
             azortype = AzorType("TUPLE", constituents=[])
             for e in expr.elements:
-                azortype.constituents.append(self.checkexpr(e, env))
+                azortype.constituents.append(self.checkexpr(e, env, generics))
             return azortype
 
         elif expr.expr_type == Expression.CALL:
-            functype = self.checkexpr(expr.left, env)
+            functype = self.checkexpr(expr.left, env, generics)
             if functype.atype != "FUNCTION":
                 self.raise_error(expr.left, f"Object of type {str(functype)} cannot be called")
+
+            if functype.generics:
+                if expr.generic_spec is None:
+                    self.raise_error(expr, "Must specify generics resolution for this function")
+                elif len(functype.generics) != len(expr.generic_spec):
+                    self.raise_error(expr.generic_spec[-1],
+                                     f"Wrong number of types supplied (expected {len(functype.generics)},"
+                                     f"got {len(expr.generic_spec)}")
+
+                spec = {}
+                for generic_label, type_node in zip(functype.generics, expr.generic_spec):
+                    spec[generic_label] = self.eval_type(type_node, allowed_generics=generics)
+
+                functype = functype.resolve_generics(spec)
+
+            else:
+                if expr.generic_spec is not None:
+                    self.raise_error(expr, "Generics were specified on a non-generic function")
 
             if len(functype.argtypes) != len(expr.args.elements):
                 self.raise_error(expr.args, "Too few arguments: expected " + str(len(functype.argtypes)))
 
             for argtype, e in zip(functype.argtypes, expr.args.elements):
-                self.assert_expr(argtype, e, env)
+                self.assert_expr(argtype, e, env, generics)
 
             # this is ugly but must be done for interpreter
             expr.argnames = functype.argnames
@@ -164,7 +192,7 @@ class TypeChecker:
                 subenv = {}
                 subenv.update(env)
 
-                ltype = self.checkexpr(lst, env)
+                ltype = self.checkexpr(lst, env, generics)
                 if ltype.atype != "LIST":
                     self.raise_error(lst, "Expected list type but got " + str(ltype))
 
@@ -179,11 +207,11 @@ class TypeChecker:
                 subenv[tail.token.val] = ltype
 
             else:
-                self.assert_expr(BOOL, expr.condition, env)
+                self.assert_expr(BOOL, expr.condition, env, generics)
                 subenv = env
 
-            thentype = self.checkexpr(expr.left, subenv)
-            elsetype = self.checkexpr(expr.right, subenv)
+            thentype = self.checkexpr(expr.left, subenv, generics)
+            elsetype = self.checkexpr(expr.right, subenv, generics)
             if thentype != elsetype:
                 self.raise_error(expr, f"Then and else have different types: {str(thentype)} and {str(elsetype)}")
             return thentype
@@ -193,7 +221,7 @@ class TypeChecker:
             subenv.update(env)
 
             dest, unpacked, main_expr = expr.left.left, expr.left.right, expr.right
-            unpacked_type = self.checkexpr(unpacked, env)
+            unpacked_type = self.checkexpr(unpacked, env, generics)
 
             if dest.expr_type == Expression.TUPLE:
                 if unpacked_type.atype != "TUPLE":
@@ -228,20 +256,20 @@ class TypeChecker:
             else:
                 self.raise_error(dest, "Invalid left-hand side for assignment")
 
-            return self.checkexpr(main_expr, subenv)
+            return self.checkexpr(main_expr, subenv, generics)
 
         elif expr.expr_type == Expression.CONS:
-            azortype = self.checkexpr(expr.right, env)
+            azortype = self.checkexpr(expr.right, env, generics)
             if azortype.atype == "LIST":
-                self.assert_expr(azortype.etype, expr.left, env)
+                self.assert_expr(azortype.etype, expr.left, env, generics)
             else:
                 self.raise_error(expr.right.token, "Not a list type")
             return azortype
 
         elif expr.expr_type == Expression.BINOP:
             ftype = BINOP_TYPES[expr.token.val]
-            self.assert_expr(ftype.argtypes[0], expr.left, env)
-            self.assert_expr(ftype.argtypes[1], expr.right, env)
+            self.assert_expr(ftype.argtypes[0], expr.left, env, generics)
+            self.assert_expr(ftype.argtypes[1], expr.right, env, generics)
             return ftype.rtype
 
         else:
@@ -256,7 +284,17 @@ class TypeChecker:
         azortype = self.eval_type(stmt.typehint)
         return LHS(stmt.label.val, azortype)
 
-    def eval_type(self, node: TypeNode):
+    def eval_type(self, node: TypeNode, allowed_generics=None):
+        allowed_generics = allowed_generics or set()
+
+        declared_generics = set(g.token.val for g in (node.generics or []))
+        if len(allowed_generics & declared_generics) != 0:
+            self.raise_error(
+                node.generics[0],
+                f"Redeclared generic(s): {','.join(allowed_generics & declared_generics)}",
+            )
+        allowed_generics |= declared_generics
+
         if node.ttype == TypeNode.SIMPLE:
             if node.simpletype == int:
                 basictype = INT
@@ -266,10 +304,22 @@ class TypeChecker:
                 raise RuntimeError("?")
 
         elif node.ttype == TypeNode.LIST:
-            basictype = AzorType("LIST", etype=self.eval_type(node.etype))
+            basictype = AzorType("LIST", etype=self.eval_type(
+                node.etype,
+                allowed_generics=allowed_generics
+            ))
 
         elif node.ttype == TypeNode.TUPLE:
-            basictype = AzorType("TUPLE", constituents=[self.eval_type(el) for el in node.constituents])
+            basictype = AzorType("TUPLE", constituents=[
+                self.eval_type(el, allowed_generics=allowed_generics)
+                for el in node.constituents
+            ])
+
+        elif node.ttype == TypeNode.GENERIC:
+            if node.label.val not in allowed_generics:
+                print(allowed_generics)
+                self.raise_error(node, "This generic name was not declared")
+            basictype = AzorType("GENERIC", label=node.label.val)
 
         else:
             self.raise_error(node, "Invalid type")
@@ -278,8 +328,12 @@ class TypeChecker:
             return AzorType(
                 atype="FUNCTION",
                 rtype=basictype,
-                argtypes=[self.eval_type(at) for at in node.argtypes],
+                argtypes=[
+                    self.eval_type(at, allowed_generics)
+                    for at in node.argtypes
+                ],
                 argnames=node.argnames,
+                generics=declared_generics,
             )
         else:
             return basictype

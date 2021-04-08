@@ -39,9 +39,10 @@ zip : [(INT, INT)](l1 : [INT], l2 : [INT]) = if first1 ~ rest1 <- l1
 
 square : INT(n : INT) = n ** 2
 
-map : [INT](f : INT(INT), l : [INT]) = if head ~ tail <- l
-                                       then f(head) ~ map(f, tail)
-                                       else [] of INT
+map : {A, B} [A](f : A(B), l : [B])
+  = if (head ~ tail) <- l
+    then f(head) ~ map{A, B}(f, tail)
+    else [] of A
 
 reverseHelper : [INT](l1 : [INT], l2 : [INT]) = if head ~ tail <- l1
                                               then reverseHelper(tail, head ~ l2)
@@ -59,4 +60,4 @@ itosHelper : [INT](n : INT) = let lastDigit <- n % 10
 
 itos : [INT](n : INT) = reverse(itosHelper(n))
 
-main : INT = let _ <- print(int_array_to_str(map(square, range(10)))) in 0
+main : INT = let _ <- print(int_array_to_str(map{INT, INT}(square, range(10)))) in 0

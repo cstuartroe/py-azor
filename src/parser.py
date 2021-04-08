@@ -61,6 +61,17 @@ class Parser:
         return Declaration(label, typehint, rhs)
 
     def grab_type_node(self, vbl_names=False):
+        if self.next().ttype == "{":
+            self.i += 1
+            generics, _ = self.grab_series(lambda: self.grab_expr(-1))
+            self.expect("}")
+            for g in generics:
+                if g.expr_type != Expression.SIMPLE or g.token.ttype != "LABEL":
+                    self.tokenizer.raise_error(g, "Generic names must be labels")
+
+        else:
+            generics = []
+
         t = self.next()
 
         if t.ttype == "TYPE":
@@ -87,13 +98,23 @@ class Parser:
                 token=t,
             )
             self.expect("]")
+        elif t.ttype == "LABEL":
+            self.i += 1
+            out = TypeNode(
+                ttype=TypeNode.GENERIC,
+                label=t,
+                token=t,
+            )
         else:
-            raise ValueError
+            self.tokenizer.raise_error(t, "Illegal start to type")
 
         if self.next().ttype == "(":
             argnames, argtypes = self.grab_type_node_args(vbl_names)
             out.argnames = argnames
             out.argtypes = argtypes
+            out.generics = generics
+        elif generics:
+            self.tokenizer.raise_error(generics[0].token, "Cannot use generics for a non-function type")
 
         return out
 
@@ -139,7 +160,7 @@ class Parser:
         elif self.next().ttype == "LET":
             n = self.grab_let()
 
-        elif self.next().ttype in ")]":
+        elif self.next().ttype in ")]}":
             self.tokenizer.raise_error(self.next(), "Mismatched braces")
 
         else:
@@ -228,9 +249,13 @@ class Parser:
 
         t = self.next()
 
-        if t.ttype == "(":
+        if t.ttype in "{(":
             call = Expression(n.token, Expression.CALL)
             call.left = n
+            if t.ttype == '{':
+                call.generic_spec = self.grab_generic_spec()
+            else:
+                call.generic_spec = None
             call.args = self.grab_tuple()
             return self.check_suffixes(call, precedence)
 
@@ -253,7 +278,7 @@ class Parser:
     def grab_series(self, grabber):
         elems = []
         ended_with_comma = True
-        while self.next().ttype not in "])":
+        while self.next().ttype not in "])}":
             elems.append(grabber())
             if self.next().ttype == ",":
                 self.i += 1
@@ -261,3 +286,9 @@ class Parser:
                 ended_with_comma = False
                 break
         return elems, ended_with_comma
+
+    def grab_generic_spec(self):
+        self.expect('{')
+        types, _ = self.grab_series(lambda: self.grab_type_node(vbl_names=False))
+        self.expect('}')
+        return types

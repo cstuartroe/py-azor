@@ -51,12 +51,14 @@ class TypeNode:
     SIMPLE = "SIMPLE"
     LIST = "LIST"
     TUPLE = "TUPLE"
+    GENERIC = "GENERIC"
 
-    def __init__(self, token, ttype, simpletype=None, etype=None, constituents=None):
+    def __init__(self, token, ttype, simpletype=None, etype=None, constituents=None, label=None):
         self.token = token
         self.ttype = ttype
         self.argtypes = None
         self.argnames = None
+        self.generics = None
 
         if ttype == TypeNode.LIST:
             self.etype = etype
@@ -64,6 +66,8 @@ class TypeNode:
             self.constituents = constituents
         elif ttype == TypeNode.SIMPLE:
             self.simpletype = simpletype
+        elif ttype == TypeNode.GENERIC:
+            self.label = label
         else:
             raise ValueError
 
@@ -79,6 +83,8 @@ class TypeNode:
                 basetype = "INT"
             else:
                 raise ValueError
+        elif self.ttype == "GENERIC":
+            return self.label.val
         else:
             raise ValueError
 

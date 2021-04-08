@@ -39,7 +39,9 @@ PUNCT = {
     ")",
     "[",
     "]",
-    "!"
+    "!",
+    "{",
+    "}",
 }
 
 ALL_PUNCTUATION = set(BINOP_PRECS.keys()) | COMPARISONS | LOGIC | PUNCT
