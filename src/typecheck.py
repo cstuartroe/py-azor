@@ -87,7 +87,6 @@ class TypeChecker:
             assert t is not None
             self.symbol_table[label] = t
 
-
         elif azortype.atype == "FUNCTION":
             env = {}
 
@@ -173,22 +172,7 @@ class TypeChecker:
                 self.raise_error(expr.left, f"Object of type {str(functype)} cannot be called")
 
             if functype.generics:
-                if expr.generic_spec is None:
-                    self.raise_error(expr, "Must specify generics resolution for this function")
-                elif len(functype.generics) != len(expr.generic_spec):
-                    self.raise_error(expr.generic_spec[-1],
-                                     f"Wrong number of types supplied (expected {len(functype.generics)},"
-                                     f"got {len(expr.generic_spec)}")
-
-                spec = {}
-                for generic_label, type_node in zip(functype.generics, expr.generic_spec):
-                    spec[generic_label] = self.eval_type(type_node, allowed_generics=set(generics))
-
-                functype = functype.resolve_generics(spec)
-
-            else:
-                if expr.generic_spec is not None:
-                    self.raise_error(expr, "Generics were specified on a non-generic function")
+                self.raise_error(expr, "Must specify generic resolution on this function")
 
             if len(functype.argtypes) != len(expr.args.elements):
                 self.raise_error(expr.args, "Too few arguments: expected " + str(len(functype.argtypes)))
@@ -287,6 +271,24 @@ class TypeChecker:
             self.assert_expr(ftype.argtypes[0], expr.left, env, generics)
             self.assert_expr(ftype.argtypes[1], expr.right, env, generics)
             return ftype.rtype
+
+        elif expr.expr_type == Expression.GENERIC:
+            function, generic_spec = expr.left, expr.elements
+            ftype = self.checkexpr(function, env, generics)
+
+            if ftype.atype != "FUNCTION" or not ftype.generics:
+                self.raise_error(expr, "This object does not have a generic type")
+
+            elif len(ftype.generics) != len(generic_spec):
+                self.raise_error(generic_spec[0],
+                                 f"Wrong number of types supplied (expected {len(ftype.generics)}, "
+                                 f"got {len(generic_spec)})")
+
+            spec = {}
+            for generic_label, type_node in zip(ftype.generics, generic_spec):
+                spec[generic_label] = self.eval_type(type_node, allowed_generics=set(generics))
+
+            return ftype.resolve_generics(spec)
 
         else:
             self.raise_error(expr, f"Unexpected expression type: {expr.expr_type}")

@@ -119,6 +119,9 @@ class Interpreter:
 
             return callee(*args)
 
+        elif expr.expr_type == Expression.GENERIC:
+            return self.evaluate_expression(expr.left, env)
+
         else:
             raise ValueError(f"Cannot evaluate expression of type {expr.expr_type}")
 

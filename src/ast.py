@@ -13,6 +13,7 @@ class Expression:
     ARROW = "ARROW"
     BINOP = "BINOP"
     NOT = "NOT"
+    GENERIC = "GENERIC"
 
     def __init__(self, token: Token, expr_type: str):
         self.token = token
@@ -46,6 +47,10 @@ class Expression:
             return f"({self.left} {self.token.val} {self.right})"
         elif self.expr_type == Expression.NOT:
             return f"(!{self.right})"
+        elif self.expr_type == Expression.GENERIC:
+            return f"{self.left}{{{', '.join(map(str, self.elements))}}}"
+        else:
+            raise ValueError
 
 
 class TypeNode:

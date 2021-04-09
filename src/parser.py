@@ -268,13 +268,15 @@ class Parser:
 
         t = self.next()
 
-        if t.ttype in "{(":
+        if t.ttype == '{':
+            resolution = Expression(n.token, Expression.GENERIC)
+            resolution.left = n
+            resolution.elements = self.grab_generic_spec()
+            return self.check_suffixes(resolution, precedence)
+
+        elif t.ttype in "(":
             call = Expression(n.token, Expression.CALL)
             call.left = n
-            if t.ttype == '{':
-                call.generic_spec = self.grab_generic_spec()
-            else:
-                call.generic_spec = None
             call.args = self.grab_tuple()
             return self.check_suffixes(call, precedence)
 

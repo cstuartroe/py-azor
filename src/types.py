@@ -37,7 +37,6 @@ class AzorType:
                 rtype=self.rtype.resolve_generics(spec),
                 argtypes=[t.resolve_generics(spec) for t in self.argtypes],
                 argnames=self.argnames,
-                generics=self.generics,
             )
 
     def __eq__(self, other):
