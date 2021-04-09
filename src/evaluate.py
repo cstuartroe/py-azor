@@ -122,6 +122,9 @@ class Interpreter:
         elif expr.expr_type == Expression.GENERIC:
             return self.evaluate_expression(expr.left, env)
 
+        elif expr.expr_type == Expression.NOT:
+            return not self.evaluate_expression(expr.right, env)
+
         else:
             raise ValueError(f"Cannot evaluate expression of type {expr.expr_type}")
 

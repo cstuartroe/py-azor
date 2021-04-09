@@ -290,6 +290,10 @@ class TypeChecker:
 
             return ftype.resolve_generics(spec)
 
+        elif expr.expr_type == Expression.NOT:
+            self.assert_expr(BOOL, expr.right, env, generics)
+            return BOOL
+
         else:
             self.raise_error(expr, f"Unexpected expression type: {expr.expr_type}")
 

@@ -174,6 +174,12 @@ class Parser:
             if len(n.elements) == 1 and not n.ended_with_comma:
                 n = n.elements[0]
 
+        elif self.next().ttype == '!':
+            t = self.next()
+            self.i += 1
+            n = Expression(t, Expression.NOT)
+            n.right = self.grab_expr(10)
+
         elif self.next().ttype == "IF":
             n = self.grab_if()
 
