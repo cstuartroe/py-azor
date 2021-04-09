@@ -201,6 +201,9 @@ class Tokenizer:
                 except ValueError:
                     Token(line=line, line_no=line_no, col_no=i, s="").raise_error("Invalid string")
 
+            elif rest[0] == '#':
+                return
+
             else:
                 s = rest[0]
 
