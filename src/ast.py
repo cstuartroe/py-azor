@@ -1,3 +1,4 @@
+from typing import List
 from .tokens import Token
 
 
@@ -73,6 +74,12 @@ class TypeNode:
             pass
         else:
             raise ValueError
+
+    def set_generics(self, generics: List[Expression]):
+        if self.argtypes:
+            self.generics = generics
+        elif len(generics) > 0:
+            generics[0].token.raise_error("Cannot use generics for a non-function type")
 
     def __str__(self):
         if self.ttype == TypeNode.LIST:

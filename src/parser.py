@@ -58,6 +58,17 @@ class Parser:
         label = self.next()
         self.expect("LABEL")
 
+        if self.next().ttype == "{":
+            self.i += 1
+            generics, _ = self.grab_series(lambda: self.grab_expr(-1))
+            self.expect("}")
+            for g in generics:
+                if g.expr_type != Expression.SIMPLE or g.token.ttype != "LABEL":
+                    g.token.raise_error("Generic names must be labels")
+
+        else:
+            generics = []
+
         if self.next().ttype == ':':
             self.i += 1
             typehint = self.grab_type_node(vbl_names=True)
@@ -75,6 +86,8 @@ class Parser:
                 token=label,
             )
 
+        typehint.set_generics(generics)
+
         self.expect('=')
 
         rhs = self.grab_expr(-1)
@@ -82,17 +95,6 @@ class Parser:
         return Declaration(label, typehint, rhs)
 
     def grab_type_node(self, vbl_names=False):
-        if self.next().ttype == "{":
-            self.i += 1
-            generics, _ = self.grab_series(lambda: self.grab_expr(-1))
-            self.expect("}")
-            for g in generics:
-                if g.expr_type != Expression.SIMPLE or g.token.ttype != "LABEL":
-                    g.token.raise_error("Generic names must be labels")
-
-        else:
-            generics = []
-
         t = self.next()
 
         if t.ttype == "TYPE":
@@ -133,9 +135,6 @@ class Parser:
             argnames, argtypes = self.grab_type_node_args(vbl_names)
             out.argnames = argnames
             out.argtypes = argtypes
-            out.generics = generics
-        elif generics:
-            generics[0].token.raise_error("Cannot use generics for a non-function type")
 
         return out
 
