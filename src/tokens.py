@@ -1,7 +1,7 @@
 import re
 import sys
 
-INT_RE = "([1-9][0-9]*|0)"
+INT_RE = "(-?[1-9][0-9]*|0)"
 LABEL_RE = "([a-zA-Z_][a-zA-Z0-9_]*)"
 
 BINOP_PRECS = {
