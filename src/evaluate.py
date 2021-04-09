@@ -58,8 +58,9 @@ class Interpreter:
 
         self.symbol_table = {**SIDE_EFFECT_FUNCTIONS}
 
-    def main(self):
-        return self.evaluate_global("main")
+    def main(self, args):
+        processed_args = [[ord(c) for c in arg] for arg in args]
+        return self.evaluate_global("main")(processed_args)
 
     def evaluate_global(self, name):
         if name not in self.symbol_table:
