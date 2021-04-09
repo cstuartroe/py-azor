@@ -11,6 +11,13 @@ It is an interpreter. Future implementations of Azor may be transpilers or even 
 you were basically living in the Dark Ages.
 
 It does require that you have the `azor` submodule of this repo downloaded, because it accesses the standard library `stdlib.azor` from that repo.
+To accomplish that after cloning this repo, run
+
+```shell
+git submodule init
+git submodule update
+```
+
 
 ## Usage
 
