@@ -12,7 +12,7 @@ class Expression:
     CONS = "CONS"
     ARROW = "ARROW"
     BINOP = "BINOP"
-    NOT = "NOT"
+    PREFIX = "PREFIX"
     GENERIC = "GENERIC"
 
     def __init__(self, token: Token, expr_type: str):
@@ -45,7 +45,7 @@ class Expression:
             return f"{self.left} <- {self.right}"
         elif self.expr_type == Expression.BINOP:
             return f"({self.left} {self.token.val} {self.right})"
-        elif self.expr_type == Expression.NOT:
+        elif self.expr_type == Expression.PREFIX:
             return f"(!{self.right})"
         elif self.expr_type == Expression.GENERIC:
             return f"{self.left}{{{', '.join(map(str, self.elements))}}}"

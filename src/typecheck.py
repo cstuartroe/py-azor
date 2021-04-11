@@ -5,7 +5,6 @@ from .types import (
     AzorType,
     BOOL,
     INT,
-    NOT_TYPE,
     ARITH_TYPE,
     LOGIC_TYPE,
     COMPARE_TYPE,
@@ -290,9 +289,15 @@ class TypeChecker:
 
             return ftype.resolve_generics(spec)
 
-        elif expr.expr_type == Expression.NOT:
-            self.assert_expr(BOOL, expr.right, env, generics)
-            return BOOL
+        elif expr.expr_type == Expression.PREFIX:
+            if expr.token.ttype == '!':
+                self.assert_expr(BOOL, expr.right, env, generics)
+                return BOOL
+            elif expr.token.s == '-':
+                self.assert_expr(INT, expr.right, env, generics)
+                return INT
+            else:
+                raise ValueError
 
         else:
             self.raise_error(expr, f"Unexpected expression type: {expr.expr_type}")
