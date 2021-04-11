@@ -142,7 +142,7 @@ class TypeChecker:
 
             elif expr.token.ttype == "BOOL":
                 return BOOL
-            elif expr.token.ttype == "INT":
+            elif expr.token.ttype in ["INT", "CHAR"]:
                 return INT
             elif expr.token.ttype == "STRING":
                 return INT_LIST

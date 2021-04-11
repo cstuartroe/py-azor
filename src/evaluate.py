@@ -141,6 +141,8 @@ class Interpreter:
                 return self.evaluate_global(token.val)
         elif token.ttype in ["BOOL", "INT", "STRING"]:
             return token.val
+        elif token.ttype == "CHAR":
+            return ord(token.val)
         else:
             raise ValueError(f"Unknown simple type: {token.ttype}")
 

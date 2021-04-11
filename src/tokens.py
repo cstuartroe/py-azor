@@ -106,6 +106,10 @@ class Token:
             val = parse_string(s)
             self.ttype = "STRING" if (val is not None) else None
             self.val = val
+        elif s.startswith("'"):
+            _, val = parse_char(s[1:-1], 0)
+            self.ttype = "CHAR" if (val is not None) else None
+            self.val = val
 
         else:
             self.raise_error("Bad token")
@@ -133,6 +137,16 @@ ESCAPES = {
 }
 
 
+def parse_char(s, i):
+    if s[i] == '\\':
+        if len(s) >= i + 2 and s[i + 1] in ESCAPES:
+            return 2, ESCAPES[s[i + 1]]
+        else:
+            return None
+    else:
+        return 1, s[i]
+
+
 def parse_string(s):
     assert s.startswith('"') and s.endswith('"') and len(s) >= 2
 
@@ -141,17 +155,21 @@ def parse_string(s):
     out = ""
 
     while i < len(body):
-        if body[i] == '\\':
-            if len(body) >= i + 2 and body[i+1] in ESCAPES:
-                out += ESCAPES[body[i+1]]
-                i += 2
-            else:
-                return None
-        else:
-            out += body[i]
-            i += 1
+        jump, c = parse_char(body, i)
+        if c is None:
+            raise ValueError
+
+        out += c
+        i += jump
 
     return [ord(c) for c in out]
+
+
+def grab_char(s, i):
+    if len(s) >= i + 2 and s[i:i + 2] == '\\"':
+        return s[i:i+2]
+    else:
+        return s[i]
 
 
 def grab_string(line):
@@ -159,19 +177,21 @@ def grab_string(line):
     out = line[0]
     i = 1
     while i < len(line):
-        if len(line) >= i + 2 and line[i:i+2] == '\\"':
-            jump = 2
-        else:
-            jump = 1
-
-        c = line[i:i+jump]
+        c = grab_char(line, i)
         out += c
-        i += jump
+        i += len(c)
 
         if c == '"':
             return out
 
     raise ValueError
+
+
+def grab_char_token(line):
+    assert line[0] == "'"
+    c = grab_char(line, 1)
+    assert line[1 + len(c)] == "'"
+    return f"'{c}'"
 
 
 class Tokenizer:
@@ -199,6 +219,12 @@ class Tokenizer:
                 try:
                     s = grab_string(rest)
                 except ValueError:
+                    Token(line=line, line_no=line_no, col_no=i, s="").raise_error("Invalid string")
+
+            elif rest[0] == "'":
+                try:
+                    s = grab_char_token(rest)
+                except AssertionError:
                     Token(line=line, line_no=line_no, col_no=i, s="").raise_error("Invalid string")
 
             elif rest[0] == '#':
