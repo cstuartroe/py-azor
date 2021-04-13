@@ -1,3 +1,3 @@
 [submodule "azor"]
 	path = azor
-	url = git@github.com:cstuartroe/azor.git
+	url = https://github.com/cstuartroe/py-azor.git
