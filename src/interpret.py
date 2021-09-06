@@ -1,5 +1,6 @@
 from typing import List
 from src.ast import Declaration, Expression
+from src.typecheck import BINOP_TYPES
 
 
 BINOPS = {
@@ -19,7 +20,11 @@ BINOPS = {
 
     '&': lambda a, b: a and b,
     '|': lambda a, b: a or b,
+    '^': lambda a, b: a is not b,
+    '!^': lambda a, b: a is b,
 }
+
+assert set(BINOPS.keys()) == set(BINOP_TYPES.keys())
 
 
 class Interpreter:
@@ -37,12 +42,14 @@ class Interpreter:
         if name not in self.symbol_table:
             stmt = self.stmts_by_label[name]
 
-            if stmt.argnames is None:
+            if stmt.typehint.args is None:
                 val = self.evaluate_expression(stmt.rhs, {})
 
             else:
+                argnames = [aname for aname, atype in stmt.typehint.args]
+
                 def val(*args):
-                    env = dict(zip(stmt.argnames, args))
+                    env = dict(zip(argnames, args))
                     return self.evaluate_expression(stmt.rhs, env)
 
             self.symbol_table[name] = val

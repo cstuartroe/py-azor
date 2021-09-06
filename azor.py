@@ -2,6 +2,7 @@ import sys
 
 from src.tokens import Tokenizer
 from src.parser import Parser
+from src.typecheck import TypeChecker
 from src.interpret import Interpreter
 
 
@@ -18,6 +19,8 @@ if __name__ == "__main__":
     tokens = Tokenizer(lines).tokenize()
 
     stmts = Parser(tokens).parse()
+
+    TypeChecker(stmts).check()
 
     interpreter = Interpreter(stmts)
 

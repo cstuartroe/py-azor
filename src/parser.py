@@ -1,6 +1,6 @@
-from typing import List
+from typing import List, Tuple
 from .tokens import BINOP_PRECS, Token
-from .ast import Expression, Declaration
+from .ast import Expression, TypeNode, Declaration
 
 
 class Parser:
@@ -41,26 +41,37 @@ class Parser:
     def grab_declaration(self):
         label = self.expect("LABEL")
 
-        if self.next().ttype == "(":
-            argnames = self.grab_argnames()
-        else:
-            argnames = None
+        self.expect(":")
+        typehint = self.grab_type_node()
 
         self.expect('=')
 
         rhs = self.grab_expr(-1)
 
-        return Declaration(label, argnames, rhs)
+        return Declaration(label, typehint, rhs)
 
-    def grab_argnames(self) -> List[str]:
+    def grab_type_node(self) -> TypeNode:
+        out = TypeNode(self.expect("TYPE"))
+
+        if self.next().ttype == "(":
+            out.args = self.grab_args_def()
+
+        return out
+
+    def grab_args_def(self) -> List[Tuple[str, TypeNode]]:
         self.expect("(")
 
-        argnames = []
+        args = []
 
         while self.next().ttype != ")":
             label = self.expect("LABEL")
 
-            argnames.append(label.s)
+            self.expect(":")
+
+            # We are explicitly disallowing first-class functions here
+            type_node = TypeNode(self.expect("TYPE"))
+
+            args.append((label.s, type_node))
 
             if self.next().ttype == ",":
                 self.i += 1
@@ -69,7 +80,7 @@ class Parser:
 
         self.expect(")")
 
-        return argnames
+        return args
 
     def grab_expr(self, suffix_precedence: int) -> Expression:
         if self.next().ttype in {"LABEL", "BOOL", "INT", "STRING", "CHAR"}:

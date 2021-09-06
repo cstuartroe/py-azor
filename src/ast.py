@@ -1,4 +1,3 @@
-from typing import List, Union
 from .tokens import Token
 
 
@@ -33,17 +32,33 @@ class Expression:
             raise ValueError
 
 
+class TypeNode:
+    TYPES = {
+        "INT": int,
+        "BOOL": bool,
+    }
+
+    def __init__(self, token: Token):
+        self.token = token
+        self.simpletype = TypeNode.TYPES[token.s]
+        self.args = None
+
+    def __str__(self):
+        basetype = self.token.s
+
+        if self.args is not None:
+            argstr = ', '.join(f'{argname}: {argtype}' for argname, argtype in self.args)
+            return f"{basetype}({argstr})"
+        else:
+            return basetype
+
+
 class Declaration:
-    def __init__(self, label: Token, argnames: Union[List[str], None], rhs: Expression):
+    def __init__(self, label: Token, typehint: TypeNode, rhs: Expression):
         self.label = label
         self.token = label
-        self.argnames = argnames
+        self.typehint = typehint
         self.rhs = rhs
 
     def __repr__(self):
-        if self.argnames is None:
-            argstring = ""
-        else:
-            argstring = f"({', '.join(self.argnames)})"
-
-        return f"{self.label.s}{argstring} = {self.rhs}"
+        return f"{self.label.s}: {self.typehint} = {self.rhs}"

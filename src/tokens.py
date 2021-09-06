@@ -26,6 +26,8 @@ COMPARISONS = {
 LOGIC = {
     "|",
     "&",
+    "^",
+    "!^",
 }
 
 PUNCT = {
@@ -47,7 +49,12 @@ class Token:
         self.col_no = col_no
         self.s = s
 
-        if s == "if":
+        if s == "INT":
+            self.ttype = "TYPE"
+        elif s == "BOOL":
+            self.ttype = "TYPE"
+
+        elif s == "if":
             self.ttype = "IF"
         elif s == "then":
             self.ttype = "THEN"
