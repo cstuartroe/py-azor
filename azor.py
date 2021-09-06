@@ -2,6 +2,7 @@ import sys
 
 from src.tokens import Tokenizer
 from src.parser import Parser
+from src.interpret import Interpreter
 
 
 if __name__ == "__main__":
@@ -18,5 +19,6 @@ if __name__ == "__main__":
 
     stmts = Parser(tokens).parse()
 
-    for stmt in stmts:
-        print(stmt)
+    interpreter = Interpreter(stmts)
+
+    print(interpreter.main())
