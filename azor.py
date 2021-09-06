@@ -1,6 +1,7 @@
 import sys
 
 from src.tokens import Tokenizer
+from src.parser import Parser
 
 
 if __name__ == "__main__":
@@ -15,5 +16,7 @@ if __name__ == "__main__":
 
     tokens = Tokenizer(lines).tokenize()
 
-    for token in tokens:
-        print(token)
+    stmts = Parser(tokens).parse()
+
+    for stmt in stmts:
+        print(stmt)
