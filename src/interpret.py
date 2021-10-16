@@ -1,3 +1,4 @@
+from functools import cache
 from typing import List
 from src.ast import Declaration, Expression
 from src.typecheck import BINOP_TYPES
@@ -48,6 +49,7 @@ class Interpreter:
             else:
                 argnames = [aname for aname, atype in stmt.typehint.args]
 
+                @cache
                 def val(*args):
                     env = dict(zip(argnames, args))
                     return self.evaluate_expression(stmt.rhs, env)
